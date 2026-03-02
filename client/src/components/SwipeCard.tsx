@@ -93,6 +93,9 @@ export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
           <span className="swipe-card__distance">{restaurant.distanceMiles} mi</span>
         </div>
         <p className="swipe-card__address">{restaurant.address}</p>
+        {!restaurant.openNow && (
+          <span className="swipe-card__closed">Currently closed</span>
+        )}
       </div>
     </div>
   );

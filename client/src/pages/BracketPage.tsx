@@ -54,6 +54,7 @@ function BracketCard({ restaurant, onPick, disabled, isWinner, isLoser }: {
           <span className="bracket-card__rating">★ {restaurant.rating.toFixed(1)}</span>
           <span>{priceDollars}</span>
           <span>{restaurant.distanceMiles} mi</span>
+          {!restaurant.openNow && <span className="closed-tag">Closed</span>}
         </div>
       </div>
     </button>

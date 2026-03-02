@@ -68,6 +68,7 @@ export function ResultsPage({ matches, onPlayAgain, onStartBracket }: ResultsPag
                   <span>{restaurant.distanceMiles} mi</span>
                 </div>
                 <p className="results-card__address">{restaurant.address}</p>
+                {!restaurant.openNow && <span className="closed-tag">Currently closed</span>}
               </div>
               <div className="results-card__arrow">›</div>
             </button>
