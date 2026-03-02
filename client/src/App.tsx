@@ -11,7 +11,7 @@ import { ResultsPage } from './pages/ResultsPage';
 import './styles/global.css';
 
 function App() {
-  const { location, loading: locationLoading, denied: locationDenied, setLocationFromZip, zipLoading, zipError } = useGeolocation();
+  const { location, locationLabel, loading: locationLoading, denied: locationDenied, setLocationFromZip, zipLoading, zipError } = useGeolocation();
   const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom } = useRoom();
   const filters = useFilters(setPhase as (phase: string) => void);
   const swipe = useSwipe(filters.restaurants, setPhase as (phase: string) => void);
@@ -91,6 +91,7 @@ function App() {
           isValid={filters.isValid}
           onSubmit={filters.submitFilters}
           noResultsMessage={filters.noResultsMessage}
+          locationLabel={locationLabel}
         />
       )}
 

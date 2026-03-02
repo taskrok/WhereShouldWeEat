@@ -429,7 +429,14 @@ body {
 .filters-title {
   font-size: 26px;
   font-weight: 800;
-  margin-bottom: 24px;
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.filters-location {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
   width: 100%;
 }
 

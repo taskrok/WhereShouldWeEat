@@ -48,6 +48,7 @@ interface FiltersPageProps {
   isValid: boolean;
   onSubmit: () => void;
   noResultsMessage: string | null;
+  locationLabel: string | null;
 }
 
 export function FiltersPage({
@@ -57,10 +58,14 @@ export function FiltersPage({
   maxDistance, setMaxDistance,
   isValid, onSubmit,
   noResultsMessage,
+  locationLabel,
 }: FiltersPageProps) {
   return (
     <div className="page page--filters">
       <h1 className="filters-title">What are you feeling?</h1>
+      {locationLabel && (
+        <p className="filters-location">Searching near {locationLabel}</p>
+      )}
 
       {noResultsMessage && (
         <div className="alert alert--warning">{noResultsMessage}</div>
