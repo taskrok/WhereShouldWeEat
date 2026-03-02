@@ -26,6 +26,8 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     // Allow any vercel.app subdomain
     if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow custom domain
+    if (origin.endsWith('wswe.today')) return callback(null, true);
     // Allow explicitly listed origins
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(null, false);
