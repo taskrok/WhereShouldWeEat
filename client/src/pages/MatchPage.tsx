@@ -11,7 +11,7 @@ export function MatchPage({ restaurant, onPlayAgain }: MatchPageProps) {
     <div className="page page--match">
       <div className="match-celebration">
         <h1 className="match-title">It's a Match!</h1>
-        <p className="match-subtitle">You both picked the same spot</p>
+        <p className="match-subtitle">The group picked the same spot!</p>
       </div>
 
       <RestaurantDetails restaurant={restaurant} />

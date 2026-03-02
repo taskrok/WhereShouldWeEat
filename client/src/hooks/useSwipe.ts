@@ -5,7 +5,7 @@ import type { Restaurant } from '../types';
 export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) => void) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matches, setMatches] = useState<Restaurant[]>([]);
-  const [partnerWaiting, setPartnerWaiting] = useState(false);
+  const [swipeProgress, setSwipeProgress] = useState<{ done: number; total: number } | null>(null);
   const pendingSwipe = useRef(false);
 
   const currentRestaurant = restaurants[currentIndex] || null;
@@ -32,7 +32,7 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
   const resetSwipe = useCallback(() => {
     setCurrentIndex(0);
     setMatches([]);
-    setPartnerWaiting(false);
+    setSwipeProgress(null);
     pendingSwipe.current = false;
   }, []);
 
@@ -40,7 +40,7 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
   useEffect(() => {
     if (restaurants.length > 0) {
       setCurrentIndex(0);
-      setPartnerWaiting(false);
+      setSwipeProgress(null);
       pendingSwipe.current = false;
     }
   }, [restaurants]);
@@ -51,8 +51,8 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
       setPhase('results');
     };
 
-    const onPartnerWaiting = () => {
-      setPartnerWaiting(true);
+    const onSwipeProgress = ({ done, total }: { done: number; total: number }) => {
+      setSwipeProgress({ done, total });
     };
 
     const onNoMatch = () => {
@@ -60,12 +60,12 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
     };
 
     socket.on('swipe:results', onResults);
-    socket.on('swipe:partner_waiting', onPartnerWaiting);
+    socket.on('swipe:progress', onSwipeProgress);
     socket.on('swipe:no_match', onNoMatch);
 
     return () => {
       socket.off('swipe:results', onResults);
-      socket.off('swipe:partner_waiting', onPartnerWaiting);
+      socket.off('swipe:progress', onSwipeProgress);
       socket.off('swipe:no_match', onNoMatch);
     };
   }, [setPhase]);
@@ -77,7 +77,7 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
     isDone,
     swipe,
     matches,
-    partnerWaiting,
+    swipeProgress,
     resetSwipe,
   };
 }

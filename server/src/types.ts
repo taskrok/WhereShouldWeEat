@@ -41,7 +41,7 @@ export interface Restaurant {
 
 export interface RoomUser {
   socketId: string;
-  role: 'creator' | 'joiner';
+  role: 'creator' | 'player';
   location: { lat: number; lng: number };
 }
 
@@ -51,7 +51,7 @@ export interface Room {
   filters: Record<string, UserFilters | null>;
   restaurants: Restaurant[];
   swipes: Record<string, Record<string, boolean>>;
-  status: 'waiting' | 'filtering' | 'swiping' | 'matched';
+  status: 'lobby' | 'filtering' | 'swiping' | 'matched';
   matchedRestaurant: Restaurant | null;
   doneUsers?: Set<string>;
   matchList?: Restaurant[];

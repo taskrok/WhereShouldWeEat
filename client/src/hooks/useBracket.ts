@@ -25,7 +25,7 @@ export function useBracket(setPhase: (phase: string) => void) {
   const [remaining, setRemaining] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
   const [voted, setVoted] = useState(false);
-  const [partnerVoted, setPartnerVoted] = useState(false);
+  const [voteProgress, setVoteProgress] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<BracketResultData | null>(null);
   const [showingResult, setShowingResult] = useState(false);
 
@@ -41,7 +41,7 @@ export function useBracket(setPhase: (phase: string) => void) {
     setRemaining(0);
     setTotalMatches(0);
     setVoted(false);
-    setPartnerVoted(false);
+    setVoteProgress(null);
     setResult(null);
     setShowingResult(false);
   }, []);
@@ -55,14 +55,14 @@ export function useBracket(setPhase: (phase: string) => void) {
       setRemaining(rem);
       setTotalMatches(total);
       setVoted(false);
-      setPartnerVoted(false);
+      setVoteProgress(null);
       setResult(null);
       setShowingResult(false);
       setPhase('bracket');
     };
 
-    const onPartnerVoted = () => {
-      setPartnerVoted(true);
+    const onVoteProgress = ({ done, total }: { done: number; total: number }) => {
+      setVoteProgress({ done, total });
     };
 
     const onResult = (data: BracketResultData) => {
@@ -76,7 +76,7 @@ export function useBracket(setPhase: (phase: string) => void) {
           if (data.round != null) setRound(data.round);
           if (data.remaining != null) setRemaining(data.remaining);
           setVoted(false);
-          setPartnerVoted(false);
+          setVoteProgress(null);
           setResult(null);
           setShowingResult(false);
         }, 2500);
@@ -86,12 +86,12 @@ export function useBracket(setPhase: (phase: string) => void) {
     };
 
     socket.on('bracket:start', onStart);
-    socket.on('bracket:partner_voted', onPartnerVoted);
+    socket.on('bracket:vote_progress', onVoteProgress);
     socket.on('bracket:result', onResult);
 
     return () => {
       socket.off('bracket:start', onStart);
-      socket.off('bracket:partner_voted', onPartnerVoted);
+      socket.off('bracket:vote_progress', onVoteProgress);
       socket.off('bracket:result', onResult);
     };
   }, [setPhase]);
@@ -102,7 +102,7 @@ export function useBracket(setPhase: (phase: string) => void) {
     remaining,
     totalMatches,
     voted,
-    partnerVoted,
+    voteProgress,
     result,
     showingResult,
     vote,

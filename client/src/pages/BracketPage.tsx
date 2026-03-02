@@ -18,7 +18,7 @@ interface BracketPageProps {
   round: number;
   remaining: number;
   voted: boolean;
-  partnerVoted: boolean;
+  voteProgress: { done: number; total: number } | null;
   result: BracketResult | null;
   showingResult: boolean;
   onVote: (placeId: string) => void;
@@ -63,16 +63,18 @@ function BracketCard({ restaurant, onPick, disabled, isWinner, isLoser }: {
 
 export function BracketPage({
   matchup, round, remaining,
-  voted, partnerVoted, result, showingResult, onVote,
+  voted, voteProgress, result, showingResult, onVote,
 }: BracketPageProps) {
   if (!matchup) return null;
 
   const resultMessage = result
     ? result.agreed
-      ? 'You both agree!'
+      ? 'Everyone agrees!'
       : result.coinFlip
         ? 'Fate decides!'
-        : 'Split decision — both advance!'
+        : result.bothAdvance
+          ? 'Split vote — both advance!'
+          : 'Majority rules!'
     : null;
 
   const isWinnerA = result?.winner.placeId === matchup.a.placeId;
@@ -122,7 +124,11 @@ export function BracketPage({
           ) : (
             <>
               <div className="spinner" />
-              <p>{partnerVoted ? 'Revealing...' : 'Waiting for your partner...'}</p>
+              <p>
+                {voteProgress
+                  ? `${voteProgress.done} of ${voteProgress.total} votes in...`
+                  : 'Waiting for votes...'}
+              </p>
             </>
           )}
         </div>

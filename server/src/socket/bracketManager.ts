@@ -84,38 +84,59 @@ export function recordBracketVote(state: BracketState, socketId: string, placeId
   state.votes[socketId] = placeId;
 }
 
-export function bothVoted(state: BracketState, userIds: string[]): boolean {
+export function allVoted(state: BracketState, userIds: string[]): boolean {
+  // Only check current users (not departed)
   return userIds.every(id => state.votes[id] != null);
 }
 
 export function resolveMatchup(state: BracketState, userIds: string[]): MatchupResult {
   const matchup = state.matchups[state.currentMatchupIndex];
-  const [userA, userB] = userIds;
-  const voteA = state.votes[userA];
-  const voteB = state.votes[userB];
-  const agreed = voteA === voteB;
+
+  // Count votes for A vs B from ALL voters (includes departed players who voted)
+  const allVoterIds = Object.keys(state.votes);
+  let votesForA = 0;
+  let votesForB = 0;
+  for (const id of allVoterIds) {
+    if (state.votes[id] === matchup.a.placeId) votesForA++;
+    else if (state.votes[id] === matchup.b.placeId) votesForB++;
+  }
+
+  // Unanimous: all voters picked the same
+  const totalVoters = allVoterIds.length;
+  const agreed = votesForA === totalVoters || votesForB === totalVoters;
 
   if (agreed) {
-    const winner = voteA === matchup.a.placeId ? matchup.a : matchup.b;
-    const loser = voteA === matchup.a.placeId ? matchup.b : matchup.a;
+    const winner = votesForA === totalVoters ? matchup.a : matchup.b;
+    const loser = winner.placeId === matchup.a.placeId ? matchup.b : matchup.a;
     state.roundWinners.push(winner);
     return { winner, loser, agreed: true, coinFlip: false, bothAdvance: false };
   }
 
-  // Disagreement
+  // Not unanimous — check for majority
   const isFinalTwo = state.pool.length === 2;
 
-  if (state.forceCoinFlip || isFinalTwo) {
-    const winner = Math.random() < 0.5 ? matchup.a : matchup.b;
-    const loser = winner.placeId === matchup.a.placeId ? matchup.b : matchup.a;
-    state.roundWinners.push(winner);
-    return { winner, loser, agreed: false, coinFlip: true, bothAdvance: false };
+  // Tie: equal votes
+  const isTie = votesForA === votesForB;
+
+  if (isTie) {
+    if (state.forceCoinFlip || isFinalTwo) {
+      // Coin flip to break tie
+      const winner = Math.random() < 0.5 ? matchup.a : matchup.b;
+      const loser = winner.placeId === matchup.a.placeId ? matchup.b : matchup.a;
+      state.roundWinners.push(winner);
+      return { winner, loser, agreed: false, coinFlip: true, bothAdvance: false };
+    }
+    // Both advance on tie
+    state.roundWinners.push(matchup.a);
+    state.roundWinners.push(matchup.b);
+    return { winner: matchup.a, loser: null, agreed: false, coinFlip: false, bothAdvance: true };
   }
 
-  // Both advance
-  state.roundWinners.push(matchup.a);
-  state.roundWinners.push(matchup.b);
-  return { winner: matchup.a, loser: null, agreed: false, coinFlip: false, bothAdvance: true };
+  // Clear majority — most votes wins
+  const winner = votesForA > votesForB ? matchup.a : matchup.b;
+  const loser = winner.placeId === matchup.a.placeId ? matchup.b : matchup.a;
+  state.roundWinners.push(winner);
+  return { winner, loser, agreed: false, coinFlip: false, bothAdvance: false };
 }
 
 export function advanceToNext(state: BracketState): AdvanceResult {
@@ -155,4 +176,9 @@ export function advanceToNext(state: BracketState): AdvanceResult {
     round: state.round,
     remaining: state.pool.length,
   };
+}
+
+export function getBracketVoteProgress(state: BracketState, userIds: string[]): { done: number; total: number } {
+  const done = userIds.filter(id => state.votes[id] != null).length;
+  return { done, total: userIds.length };
 }

@@ -18,11 +18,11 @@ export function checkAllSwiped(room: Room, socketId: string): boolean {
   return Object.keys(userSwipes).length >= room.restaurants.length;
 }
 
-export function checkBothDone(room: Room): boolean {
+export function checkAllDone(room: Room): boolean {
+  // Only check current players (not departed)
   const userIds = Object.keys(room.users);
   if (userIds.length < 2) return false;
   return userIds.every(id => {
-    // Done if they've swiped on all restaurants OR explicitly sent swipe:done
     const swipes = room.swipes[id] || {};
     const swipedAll = Object.keys(swipes).length >= room.restaurants.length;
     const explicitlyDone = room.doneUsers?.has(id) ?? false;
@@ -31,15 +31,27 @@ export function checkBothDone(room: Room): boolean {
 }
 
 export function getAllMatches(room: Room): Restaurant[] {
-  const userIds = Object.keys(room.users);
-  if (userIds.length < 2) return [];
+  // Count yes-swipes from ALL entries in room.swipes (includes departed players)
+  const swiperIds = Object.keys(room.swipes);
+  const totalSwipers = swiperIds.length;
+  if (totalSwipers < 2) return [];
 
-  const [userA, userB] = userIds;
-  const swipesA = room.swipes[userA] || {};
-  const swipesB = room.swipes[userB] || {};
+  // For 2 swipers: require both (unanimous). For 3+: require > 50%
+  const threshold = totalSwipers === 2 ? 2 : Math.ceil(totalSwipers * 0.5);
 
-  // Find all placeIds where BOTH swiped right
-  return room.restaurants.filter(r =>
-    swipesA[r.placeId] === true && swipesB[r.placeId] === true
-  );
+  return room.restaurants.filter(r => {
+    const yesCount = swiperIds.filter(id => room.swipes[id]?.[r.placeId] === true).length;
+    return yesCount >= threshold;
+  });
+}
+
+export function getSwipeProgress(room: Room): { done: number; total: number } {
+  const currentUserIds = Object.keys(room.users);
+  const done = currentUserIds.filter(id => {
+    const swipes = room.swipes[id] || {};
+    const swipedAll = Object.keys(swipes).length >= room.restaurants.length;
+    const explicitlyDone = room.doneUsers?.has(id) ?? false;
+    return swipedAll || explicitlyDone;
+  }).length;
+  return { done, total: currentUserIds.length };
 }

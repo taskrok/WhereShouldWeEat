@@ -1,8 +1,118 @@
 import type { Room, RoomUser } from '../types.js';
 import { generateRoomCode, releaseRoomCode } from '../utils/roomCode.js';
 
+const GRACE_PERIOD_MS = 30_000; // 30 seconds to reconnect
+
 const rooms = new Map<string, Room>();
 const socketToRoom = new Map<string, string>();
+
+// Session tracking for reconnection grace period
+const sessionToSocket = new Map<string, string>();       // sessionId → current socketId
+const socketToSession = new Map<string, string>();       // socketId → sessionId
+const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>(); // sessionId → timer
+
+export function registerSession(sessionId: string, socketId: string): void {
+  // If this session already has a socket mapping, clean up the old one
+  const oldSocketId = sessionToSocket.get(sessionId);
+  if (oldSocketId && oldSocketId !== socketId) {
+    socketToSession.delete(oldSocketId);
+  }
+  sessionToSocket.set(sessionId, socketId);
+  socketToSession.set(socketId, sessionId);
+}
+
+export function getSessionBySocket(socketId: string): string | undefined {
+  return socketToSession.get(socketId);
+}
+
+/**
+ * Try to reconnect a session to a room. Returns the room if successful.
+ * Swaps the old socket ID for the new one in all data structures.
+ */
+export function tryReconnect(sessionId: string, newSocketId: string): Room | null {
+  // Cancel any pending disconnect timer
+  const timer = disconnectTimers.get(sessionId);
+  if (timer) {
+    clearTimeout(timer);
+    disconnectTimers.delete(sessionId);
+  }
+
+  const oldSocketId = sessionToSocket.get(sessionId);
+  if (!oldSocketId || oldSocketId === newSocketId) return null;
+
+  const code = socketToRoom.get(oldSocketId);
+  if (!code) return null;
+  const room = rooms.get(code);
+  if (!room) return null;
+
+  // Swap socket ID in room.users
+  const user = room.users[oldSocketId];
+  if (!user) return null;
+
+  delete room.users[oldSocketId];
+  user.socketId = newSocketId;
+  room.users[newSocketId] = user;
+
+  // Swap in filters
+  if (oldSocketId in room.filters) {
+    room.filters[newSocketId] = room.filters[oldSocketId];
+    delete room.filters[oldSocketId];
+  }
+
+  // Swap in swipes
+  if (oldSocketId in room.swipes) {
+    room.swipes[newSocketId] = room.swipes[oldSocketId];
+    delete room.swipes[oldSocketId];
+  }
+
+  // Swap in doneUsers
+  if (room.doneUsers?.has(oldSocketId)) {
+    room.doneUsers.delete(oldSocketId);
+    room.doneUsers.add(newSocketId);
+  }
+
+  // Swap in bracket votes
+  if (room.bracket && oldSocketId in room.bracket.votes) {
+    room.bracket.votes[newSocketId] = room.bracket.votes[oldSocketId];
+    delete room.bracket.votes[oldSocketId];
+  }
+
+  // Update maps
+  socketToRoom.delete(oldSocketId);
+  socketToRoom.set(newSocketId, code);
+  registerSession(sessionId, newSocketId);
+
+  room.lastActivity = Date.now();
+  console.log(`Session ${sessionId}: reconnected (${oldSocketId} → ${newSocketId}) in room ${code}`);
+  return room;
+}
+
+/**
+ * Start a grace period for a disconnected socket.
+ * Returns true if grace period started (caller should NOT emit leave events yet).
+ * Returns false if user was not in a room.
+ */
+export function startGracePeriod(socketId: string, onExpire: () => void): boolean {
+  const code = socketToRoom.get(socketId);
+  if (!code) return false;
+
+  const sessionId = socketToSession.get(socketId);
+  if (!sessionId) {
+    // No session — remove immediately (shouldn't happen normally)
+    return false;
+  }
+
+  // Start timer — if they don't reconnect in time, actually remove them
+  const timer = setTimeout(() => {
+    disconnectTimers.delete(sessionId);
+    console.log(`Session ${sessionId}: grace period expired, removing from room`);
+    onExpire();
+  }, GRACE_PERIOD_MS);
+
+  disconnectTimers.set(sessionId, timer);
+  console.log(`Session ${sessionId}: grace period started (${GRACE_PERIOD_MS / 1000}s)`);
+  return true;
+}
 
 export function createRoom(socketId: string, lat: number, lng: number): Room {
   const code = generateRoomCode();
@@ -11,10 +121,10 @@ export function createRoom(socketId: string, lat: number, lng: number): Room {
     users: {
       [socketId]: { socketId, role: 'creator', location: { lat, lng } },
     },
-    filters: { [socketId]: null },
+    filters: {},
     restaurants: [],
-    swipes: { [socketId]: {} },
-    status: 'waiting',
+    swipes: {},
+    status: 'lobby',
     matchedRestaurant: null,
     location: { lat, lng },
     lastActivity: Date.now(),
@@ -28,28 +138,38 @@ export function joinRoom(socketId: string, code: string, lat?: number, lng?: num
   const normalizedCode = code.toUpperCase().trim();
   const room = rooms.get(normalizedCode);
   if (!room) return null;
-  if (Object.keys(room.users).length >= 2) return null;
+  if (Object.keys(room.users).length >= 15) return null;
+  if (room.status !== 'lobby') return null;
 
   const joinerLocation = (lat != null && lng != null) ? { lat, lng } : room.location!;
-  room.users[socketId] = { socketId, role: 'joiner', location: joinerLocation };
-  room.filters[socketId] = null;
-  room.swipes[socketId] = {};
-  room.status = 'filtering';
+  room.users[socketId] = { socketId, role: 'player', location: joinerLocation };
   room.lastActivity = Date.now();
   socketToRoom.set(socketId, normalizedCode);
 
-  // Update room location to midpoint between both partners
-  const users = Object.values(room.users);
-  if (users.length === 2) {
-    const locA = users[0].location;
-    const locB = users[1].location;
-    room.location = {
-      lat: (locA.lat + locB.lat) / 2,
-      lng: (locA.lng + locB.lng) / 2,
-    };
-    console.log(`Room ${normalizedCode}: midpoint = ${room.location.lat.toFixed(4)}, ${room.location.lng.toFixed(4)}`);
-  }
+  // Recalculate centroid from all users
+  recalculateCentroid(room);
 
+  return room;
+}
+
+export function startGame(socketId: string): Room | null {
+  const code = socketToRoom.get(socketId);
+  if (!code) return null;
+  const room = rooms.get(code);
+  if (!room) return null;
+
+  // Only the creator can start
+  if (room.users[socketId]?.role !== 'creator') return null;
+  if (room.status !== 'lobby') return null;
+  if (Object.keys(room.users).length < 2) return null;
+
+  room.status = 'filtering';
+  // Initialize filters and swipes for every current user
+  for (const id of Object.keys(room.users)) {
+    room.filters[id] = null;
+    room.swipes[id] = {};
+  }
+  room.lastActivity = Date.now();
   return room;
 }
 
@@ -63,28 +183,74 @@ export function getRoomBySocket(socketId: string): Room | null {
   return rooms.get(code) || null;
 }
 
-export function removeUserFromRoom(socketId: string): { room: Room; otherSocketId: string | null } | null {
+export function removeUserFromRoom(socketId: string): { room: Room; remainingIds: string[]; wasResetToLobby: boolean } | null {
   const code = socketToRoom.get(socketId);
   if (!code) return null;
   const room = rooms.get(code);
   if (!room) return null;
 
-  const otherSocketId = Object.keys(room.users).find(id => id !== socketId) || null;
+  const wasCreator = room.users[socketId]?.role === 'creator';
 
+  // Remove from users only — keep filters/swipes/doneUsers intact
   delete room.users[socketId];
-  delete room.filters[socketId];
-  delete room.swipes[socketId];
   socketToRoom.delete(socketId);
 
+  // Clean up session maps
+  const sessionId = socketToSession.get(socketId);
+  if (sessionId) {
+    sessionToSocket.delete(sessionId);
+    socketToSession.delete(socketId);
+    const timer = disconnectTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      disconnectTimers.delete(sessionId);
+    }
+  }
+
+  const remainingIds = Object.keys(room.users);
+
   // If room is empty, clean it up
-  if (Object.keys(room.users).length === 0) {
+  if (remainingIds.length === 0) {
     rooms.delete(code);
     releaseRoomCode(code);
     return null;
   }
 
+  // Promote another player to creator if the creator left
+  if (wasCreator && remainingIds.length > 0) {
+    room.users[remainingIds[0]].role = 'creator';
+  }
+
+  // If fewer than 2 remain during active game, reset to lobby
+  let wasResetToLobby = false;
+  if (remainingIds.length < 2 && room.status !== 'lobby') {
+    room.status = 'lobby';
+    room.restaurants = [];
+    room.matchedRestaurant = null;
+    room.doneUsers = undefined;
+    room.bracket = undefined;
+    room.matchList = undefined;
+    room.filters = {};
+    room.swipes = {};
+    wasResetToLobby = true;
+  }
+
+  // Recalculate centroid from remaining users
+  recalculateCentroid(room);
+
   room.lastActivity = Date.now();
-  return { room, otherSocketId };
+  return { room, remainingIds, wasResetToLobby };
+}
+
+function recalculateCentroid(room: Room): void {
+  const users = Object.values(room.users);
+  if (users.length === 0) return;
+  const latSum = users.reduce((sum, u) => sum + u.location.lat, 0);
+  const lngSum = users.reduce((sum, u) => sum + u.location.lng, 0);
+  room.location = {
+    lat: latSum / users.length,
+    lng: lngSum / users.length,
+  };
 }
 
 // Clean up stale rooms every 5 minutes
@@ -95,6 +261,11 @@ setInterval(() => {
     if (now - room.lastActivity > THIRTY_MINUTES) {
       for (const socketId of Object.keys(room.users)) {
         socketToRoom.delete(socketId);
+        const sid = socketToSession.get(socketId);
+        if (sid) {
+          sessionToSocket.delete(sid);
+          socketToSession.delete(socketId);
+        }
       }
       rooms.delete(code);
       releaseRoomCode(code);

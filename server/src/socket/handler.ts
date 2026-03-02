@@ -1,7 +1,7 @@
 import type { Server, Socket } from 'socket.io';
-import { createRoom, joinRoom, getRoomBySocket, removeUserFromRoom } from './roomManager.js';
-import { recordSwipe, checkAllSwiped, checkBothDone, getAllMatches } from './matchDetector.js';
-import { initBracket, getCurrentMatchup, recordBracketVote, bothVoted, resolveMatchup, advanceToNext } from './bracketManager.js';
+import { createRoom, joinRoom, getRoomBySocket, removeUserFromRoom, startGame, registerSession, tryReconnect, startGracePeriod } from './roomManager.js';
+import { recordSwipe, checkAllSwiped, checkAllDone, getAllMatches, getSwipeProgress } from './matchDetector.js';
+import { initBracket, getCurrentMatchup, recordBracketVote, allVoted, resolveMatchup, advanceToNext, getBracketVoteProgress } from './bracketManager.js';
 import { mergeFilters } from '../utils/filterMerge.js';
 import { searchRestaurants } from '../services/googlePlaces.js';
 import type { UserFilters } from '../types.js';
@@ -19,7 +19,7 @@ function emitResults(io: Server, room: any): void {
     io.to(room.code).emit('swipe:results', { matches });
     console.log(`Room ${room.code}: 1 match — skipping bracket`);
   } else {
-    // 2+ matches — show all matches first, let partners decide if they want a bracket
+    // 2+ matches — show all matches first, let group decide if they want a bracket
     room.matchList = matches;
     io.to(room.code).emit('swipe:results', { matches });
     console.log(`Room ${room.code}: ${matches.length} matches — showing list`);
@@ -28,7 +28,27 @@ function emitResults(io: Server, room: any): void {
 
 export function setupSocketHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
-    console.log(`Connected: ${socket.id}`);
+    const sessionId = socket.handshake.auth?.sessionId as string | undefined;
+    console.log(`Connected: ${socket.id} (session: ${sessionId ?? 'none'})`);
+
+    // Register session and attempt reconnection
+    if (sessionId) {
+      registerSession(sessionId, socket.id);
+
+      const room = tryReconnect(sessionId, socket.id);
+      if (room) {
+        socket.join(room.code);
+        // Tell the client they're back in their room
+        socket.emit('room:reconnected', {
+          code: room.code,
+          status: room.status,
+          playerCount: Object.keys(room.users).length,
+          isCreator: room.users[socket.id]?.role === 'creator',
+          restaurants: room.restaurants,
+          limitedResults: false,
+        });
+      }
+    }
 
     socket.on('room:create', ({ lat, lng }: { lat: number; lng: number }) => {
       const room = createRoom(socket.id, lat, lng);
@@ -40,13 +60,22 @@ export function setupSocketHandlers(io: Server): void {
     socket.on('room:join', ({ code, lat, lng }: { code: string; lat: number; lng: number }) => {
       const room = joinRoom(socket.id, code, lat, lng);
       if (!room) {
-        socket.emit('room:error', { message: 'Room not found or already full' });
+        socket.emit('room:error', { message: 'Room not found, full, or already started' });
         return;
       }
       socket.join(room.code);
+      const playerCount = Object.keys(room.users).length;
       socket.emit('room:joined', { code: room.code });
-      socket.to(room.code).emit('room:partner_joined', {});
-      console.log(`${socket.id} joined room ${room.code}`);
+      io.to(room.code).emit('room:player_joined', { playerCount });
+      console.log(`${socket.id} joined room ${room.code} (${playerCount} players)`);
+    });
+
+    socket.on('room:start', () => {
+      const room = startGame(socket.id);
+      if (!room) return;
+      const playerCount = Object.keys(room.users).length;
+      io.to(room.code).emit('room:game_started', { playerCount });
+      console.log(`Room ${room.code}: game started with ${playerCount} players`);
     });
 
     socket.on('filters:submit', async ({ filters }: { filters: UserFilters }) => {
@@ -56,20 +85,23 @@ export function setupSocketHandlers(io: Server): void {
       room.filters[socket.id] = filters;
       room.lastActivity = Date.now();
 
-      const filterEntries = Object.values(room.filters);
-      const bothSubmitted = filterEntries.length === 2 && filterEntries.every(f => f !== null);
+      // Check if all current users have submitted
+      const currentUserIds = Object.keys(room.users);
+      const allSubmitted = currentUserIds.every(id => room.filters[id] != null);
 
-      if (!bothSubmitted) {
-        socket.to(room.code).emit('filters:partner_ready', {});
+      if (!allSubmitted) {
+        const done = currentUserIds.filter(id => room.filters[id] != null).length;
+        io.to(room.code).emit('filters:progress', { done, total: currentUserIds.length });
         return;
       }
 
-      const [filtersA, filtersB] = Object.values(room.filters) as UserFilters[];
-      const merged = mergeFilters(filtersA, filtersB);
+      // All submitted — merge filters
+      const allFilters = currentUserIds
+        .map(id => room.filters[id])
+        .filter((f): f is UserFilters => f !== null);
+      const merged = mergeFilters(allFilters);
 
-      console.log(`Room ${room.code}: Partner A filters:`, JSON.stringify(filtersA));
-      console.log(`Room ${room.code}: Partner B filters:`, JSON.stringify(filtersB));
-      console.log(`Room ${room.code}: Merged:`, JSON.stringify(merged));
+      console.log(`Room ${room.code}: ${allFilters.length} filter sets merged:`, JSON.stringify(merged));
 
       try {
         const { restaurants, limitedResults } = await searchRestaurants(
@@ -80,7 +112,7 @@ export function setupSocketHandlers(io: Server): void {
 
         if (restaurants.length === 0) {
           io.to(room.code).emit('filters:no_results', {
-            message: 'No restaurants found matching both your preferences. Try broadening your filters!',
+            message: "No restaurants found matching the group's preferences. Try broadening your filters!",
           });
           for (const id of Object.keys(room.filters)) {
             room.filters[id] = null;
@@ -91,7 +123,7 @@ export function setupSocketHandlers(io: Server): void {
 
         room.restaurants = restaurants;
         room.status = 'swiping';
-        io.to(room.code).emit('filters:both_ready', { restaurants, limitedResults });
+        io.to(room.code).emit('filters:all_ready', { restaurants, limitedResults });
         console.log(`Room ${room.code}: ${restaurants.length} restaurants found${limitedResults ? ' (limited — many places closed)' : ''}`);
       } catch (err) {
         console.error('Failed to fetch restaurants:', err);
@@ -108,10 +140,11 @@ export function setupSocketHandlers(io: Server): void {
       if (checkAllSwiped(room, socket.id)) {
         if (!room.doneUsers) room.doneUsers = new Set();
         room.doneUsers.add(socket.id);
-        socket.to(room.code).emit('swipe:partner_waiting', {});
+        const progress = getSwipeProgress(room);
+        io.to(room.code).emit('swipe:progress', progress);
       }
 
-      if (checkBothDone(room)) {
+      if (checkAllDone(room)) {
         emitResults(io, room);
       }
     });
@@ -122,9 +155,10 @@ export function setupSocketHandlers(io: Server): void {
 
       if (!room.doneUsers) room.doneUsers = new Set();
       room.doneUsers.add(socket.id);
-      socket.to(room.code).emit('swipe:partner_waiting', {});
+      const progress = getSwipeProgress(room);
+      io.to(room.code).emit('swipe:progress', progress);
 
-      if (checkBothDone(room)) {
+      if (checkAllDone(room)) {
         emitResults(io, room);
       }
     });
@@ -139,13 +173,14 @@ export function setupSocketHandlers(io: Server): void {
 
       const userIds = Object.keys(room.users);
 
-      if (!bothVoted(room.bracket, userIds)) {
-        socket.to(room.code).emit('bracket:partner_voted', {});
-        console.log(`Room ${room.code}: ${socket.id} voted in bracket`);
+      if (!allVoted(room.bracket, userIds)) {
+        const progress = getBracketVoteProgress(room.bracket, userIds);
+        io.to(room.code).emit('bracket:vote_progress', progress);
+        console.log(`Room ${room.code}: ${socket.id} voted in bracket (${progress.done}/${progress.total})`);
         return;
       }
 
-      // Both voted — resolve
+      // All voted — resolve
       const result = resolveMatchup(room.bracket, userIds);
       console.log(`Room ${room.code}: Bracket matchup resolved — agreed=${result.agreed}, coinFlip=${result.coinFlip}, bothAdvance=${result.bothAdvance}`);
 
@@ -180,7 +215,7 @@ export function setupSocketHandlers(io: Server): void {
       }
     });
 
-    // Either partner can trigger the bracket from the results list
+    // Any player can trigger the bracket from the results list
     socket.on('bracket:request', () => {
       const room = getRoomBySocket(socket.id);
       if (!room || !room.matchList || room.matchList.length < 2) return;
@@ -202,13 +237,15 @@ export function setupSocketHandlers(io: Server): void {
       const room = getRoomBySocket(socket.id);
       if (!room) return;
 
-      for (const id of Object.keys(room.filters)) {
+      // Reset filters/swipes for current users
+      const currentUserIds = Object.keys(room.users);
+      room.filters = {};
+      room.swipes = {};
+      for (const id of currentUserIds) {
         room.filters[id] = null;
-      }
-      room.restaurants = [];
-      for (const id of Object.keys(room.swipes)) {
         room.swipes[id] = {};
       }
+      room.restaurants = [];
       room.status = 'filtering';
       room.matchedRestaurant = null;
       room.doneUsers = undefined;
@@ -221,19 +258,44 @@ export function setupSocketHandlers(io: Server): void {
     });
 
     socket.on('room:leave', () => {
-      handleDisconnect(socket);
+      // Explicit leave — no grace period
+      actuallyRemoveUser(io, socket);
     });
 
     socket.on('disconnect', () => {
-      handleDisconnect(socket);
       console.log(`Disconnected: ${socket.id}`);
+      // Start grace period — don't remove yet
+      const started = startGracePeriod(socket.id, () => {
+        // Grace period expired — actually remove
+        actuallyRemoveUser(io, socket);
+      });
+      if (!started) {
+        // No room to grace — nothing to do
+      }
     });
   });
 }
 
-function handleDisconnect(socket: Socket): void {
+function actuallyRemoveUser(io: Server, socket: Socket): void {
   const result = removeUserFromRoom(socket.id);
-  if (result) {
-    socket.to(result.room.code).emit('room:partner_left', {});
+  if (!result) return;
+
+  const { room, remainingIds, wasResetToLobby } = result;
+  const playerCount = remainingIds.length;
+
+  // Notify remaining players
+  io.to(room.code).emit('room:player_left', { playerCount });
+
+  // If a new creator was promoted, notify them
+  if (remainingIds.length > 0) {
+    const newCreatorId = remainingIds.find(id => room.users[id]?.role === 'creator');
+    if (newCreatorId) {
+      io.to(newCreatorId).emit('room:promoted', {});
+    }
+  }
+
+  // If reset to lobby due to < 2 players during active game
+  if (wasResetToLobby) {
+    io.to(room.code).emit('room:reset_to_lobby', {});
   }
 }

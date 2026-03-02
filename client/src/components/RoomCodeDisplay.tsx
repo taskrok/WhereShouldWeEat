@@ -9,7 +9,7 @@ export function RoomCodeDisplay({ code }: RoomCodeDisplayProps) {
 
   return (
     <div className="room-code-display">
-      <p className="room-code-display__label">Share this code with your partner</p>
+      <p className="room-code-display__label">Share this code with your group</p>
       <div className="room-code-display__code" onClick={handleCopy}>
         {code.split('').map((char, i) => (
           <span key={i} className="room-code-display__letter">{char}</span>

@@ -38,7 +38,7 @@ export function ResultsPage({ matches, onPlayAgain, onStartBracket }: ResultsPag
         <h1 className="match-title">
           {matches.length} Match{matches.length !== 1 ? 'es' : ''}!
         </h1>
-        <p className="match-subtitle">You both said yes to these spots</p>
+        <p className="match-subtitle">The group said yes to these spots</p>
       </div>
 
       <div className="results-list">

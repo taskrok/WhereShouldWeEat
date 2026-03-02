@@ -4,7 +4,7 @@ export function WaitingPage() {
       <div className="waiting-content">
         <div className="spinner" />
         <h2>You're ready!</h2>
-        <p>Waiting for your partner to finish picking...</p>
+        <p>Waiting for everyone to finish picking...</p>
       </div>
     </div>
   );

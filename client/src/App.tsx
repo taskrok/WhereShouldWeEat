@@ -18,7 +18,7 @@ function App() {
   const { location, locationLabel, loading: locationLoading, denied: locationDenied, setLocationFromZip, zipLoading, zipError } = useGeolocation();
   const resetRef = useRef<() => void>(() => {});
   const onRestarted = useCallback(() => resetRef.current(), []);
-  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom } = useRoom(onRestarted);
+  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom, startGame, playerCount, isCreator } = useRoom(onRestarted);
   const filters = useFilters(setPhase as (phase: string) => void);
   const swipe = useSwipe(filters.restaurants, setPhase as (phase: string) => void);
   const bracket = useBracket(setPhase as (phase: string) => void);
@@ -93,7 +93,14 @@ function App() {
         />
       )}
 
-      {phase === 'lobby' && <LobbyPage roomCode={roomCode!} />}
+      {phase === 'lobby' && (
+        <LobbyPage
+          roomCode={roomCode!}
+          playerCount={playerCount}
+          isCreator={isCreator}
+          onStartGame={startGame}
+        />
+      )}
 
       {phase === 'filters' && (
         <FiltersPage
@@ -122,7 +129,7 @@ function App() {
           currentIndex={swipe.currentIndex}
           onSwipe={swipe.swipe}
           isDone={swipe.isDone}
-          partnerWaiting={swipe.partnerWaiting}
+          swipeProgress={swipe.swipeProgress}
           total={swipe.total}
           limitedResults={filters.limitedResults}
         />
@@ -134,7 +141,7 @@ function App() {
           round={bracket.round}
           remaining={bracket.remaining}
           voted={bracket.voted}
-          partnerVoted={bracket.partnerVoted}
+          voteProgress={bracket.voteProgress}
           result={bracket.result}
           showingResult={bracket.showingResult}
           onVote={bracket.vote}
@@ -152,7 +159,7 @@ function App() {
       {phase === 'no_match' && (
         <div className="page page--no-match">
           <h1>No matches this time</h1>
-          <p>You didn't swipe right on any of the same places.</p>
+          <p>The group didn't agree on any places.</p>
           <button className="btn btn--primary" onClick={handlePlayAgain}>
             Try Again
           </button>
