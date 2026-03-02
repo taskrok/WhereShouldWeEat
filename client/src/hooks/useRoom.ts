@@ -88,7 +88,7 @@ export function useRoom(onRestartedCallback?: () => void) {
       onRestartedCallback?.();
     };
 
-    const onReconnected = ({ code, status, playerCount: count, isCreator: creator, restaurants }: {
+    const onReconnected = ({ code, status, playerCount: count, isCreator: creator }: {
       code: string; status: string; playerCount: number; isCreator: boolean;
       restaurants: any[]; limitedResults: boolean;
     }) => {
