@@ -40,7 +40,7 @@ export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
     if (Math.abs(offset) > SWIPE_THRESHOLD) {
       const direction = offset > 0 ? 'right' : 'left';
       setExiting(direction);
-      setTimeout(() => onSwipe(direction), 300);
+      onSwipe(direction);
     } else {
       setOffset(0);
     }

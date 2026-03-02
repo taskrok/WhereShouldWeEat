@@ -6,32 +6,34 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matches, setMatches] = useState<Restaurant[]>([]);
   const [partnerWaiting, setPartnerWaiting] = useState(false);
-  const swiping = useRef(false);
+  const pendingSwipe = useRef(false);
 
   const currentRestaurant = restaurants[currentIndex] || null;
   const isDone = currentIndex >= restaurants.length;
 
   const swipe = useCallback((direction: 'left' | 'right') => {
-    if (!currentRestaurant || swiping.current) return;
-    swiping.current = true;
+    if (!currentRestaurant || pendingSwipe.current) return;
+    pendingSwipe.current = true;
 
     const isLast = currentIndex + 1 >= restaurants.length;
     socket.emit('swipe', { placeId: currentRestaurant.placeId, direction });
     setCurrentIndex(prev => prev + 1);
 
-    // Emit done AFTER the swipe event so server records the swipe first
     if (isLast) {
       setTimeout(() => socket.emit('swipe:done'), 50);
     }
-
-    setTimeout(() => { swiping.current = false; }, 400);
   }, [currentRestaurant, currentIndex, restaurants.length]);
+
+  // Reset the pending flag whenever currentIndex changes (card advanced)
+  useEffect(() => {
+    pendingSwipe.current = false;
+  }, [currentIndex]);
 
   const resetSwipe = useCallback(() => {
     setCurrentIndex(0);
     setMatches([]);
     setPartnerWaiting(false);
-    swiping.current = false;
+    pendingSwipe.current = false;
   }, []);
 
   useEffect(() => {
