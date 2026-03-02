@@ -67,6 +67,10 @@ export function setupSocketHandlers(io: Server): void {
       const [filtersA, filtersB] = Object.values(room.filters) as UserFilters[];
       const merged = mergeFilters(filtersA, filtersB);
 
+      console.log(`Room ${room.code}: Partner A filters:`, JSON.stringify(filtersA));
+      console.log(`Room ${room.code}: Partner B filters:`, JSON.stringify(filtersB));
+      console.log(`Room ${room.code}: Merged:`, JSON.stringify(merged));
+
       try {
         const restaurants = await searchRestaurants(
           room.location!.lat,

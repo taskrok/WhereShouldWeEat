@@ -83,22 +83,25 @@ async function fetchNearby(
   lat: number,
   lng: number,
   radius: number,
-  keyword: string
+  keyword: string,
+  openOnly: boolean
 ): Promise<Restaurant[]> {
   const params = new URLSearchParams({
     location: `${lat},${lng}`,
     radius: String(radius),
     type: 'restaurant',
     keyword,
-    opennow: 'true',
     key: GOOGLE_PLACES_API_KEY,
   });
+  if (openOnly) {
+    params.set('opennow', 'true');
+  }
 
   const url = `${BASE_URL}/nearbysearch/json?${params}`;
   const response = await fetch(url);
   const data = await response.json() as any;
 
-  console.log(`  keyword="${keyword}": status=${data.status}, results=${data.results?.length ?? 0}`);
+  console.log(`  keyword="${keyword}"${openOnly ? ' (open now)' : ''}: status=${data.status}, results=${data.results?.length ?? 0}`);
 
   if (data.status !== 'OK') {
     if (data.status !== 'ZERO_RESULTS') {
@@ -136,11 +139,11 @@ export async function searchRestaurants(
 
   console.log(`Searching ${cuisinesToSearch.length} cuisine(s) within ${radius}m, vibes: ${filters.vibes.join(', ')}...`);
 
-  // Run cuisine searches in parallel (up to 5 concurrent)
-  const results = await Promise.all(
+  // First pass: search for open restaurants only
+  const openResults = await Promise.all(
     cuisinesToSearch.map(cuisine => {
       const keyword = CUISINE_TO_KEYWORD[cuisine];
-      return fetchNearby(lat, lng, radius, keyword)
+      return fetchNearby(lat, lng, radius, keyword, true)
         .catch(err => {
           console.error(`Failed to fetch ${cuisine}:`, err);
           return [] as Restaurant[];
@@ -148,11 +151,36 @@ export async function searchRestaurants(
     })
   );
 
-  for (const restaurants of results) {
+  for (const restaurants of openResults) {
     for (const r of restaurants) {
       if (!seenIds.has(r.placeId)) {
         seenIds.add(r.placeId);
         allRestaurants.push(r);
+      }
+    }
+  }
+
+  // If too few results, backfill with all places (including closed)
+  const MIN_RESULTS = 8;
+  if (allRestaurants.length < MIN_RESULTS) {
+    console.log(`  Only ${allRestaurants.length} open results — backfilling with all places...`);
+    const allResults = await Promise.all(
+      cuisinesToSearch.map(cuisine => {
+        const keyword = CUISINE_TO_KEYWORD[cuisine];
+        return fetchNearby(lat, lng, radius, keyword, false)
+          .catch(err => {
+            console.error(`Failed to fetch ${cuisine} (all):`, err);
+            return [] as Restaurant[];
+          });
+      })
+    );
+
+    for (const restaurants of allResults) {
+      for (const r of restaurants) {
+        if (!seenIds.has(r.placeId)) {
+          seenIds.add(r.placeId);
+          allRestaurants.push(r);
+        }
       }
     }
   }
@@ -182,8 +210,13 @@ export async function searchRestaurants(
   };
   const vibeMatchTypes = new Set(filters.vibes.flatMap(v => vibeTypes[v] || []));
 
-  // Sort: vibe match > budget > distance > rating
+  // Sort: open > budget > vibe > distance > rating
   deduplicated.sort((a, b) => {
+    // Prefer open places
+    const aOpen = a.openNow ? 1 : 0;
+    const bOpen = b.openNow ? 1 : 0;
+    if (bOpen !== aOpen) return bOpen - aOpen;
+
     // Prefer within budget
     const aInBudget = (a.priceLevel === 0 || a.priceLevel <= maxPriceLevel) ? 1 : 0;
     const bInBudget = (b.priceLevel === 0 || b.priceLevel <= maxPriceLevel) ? 1 : 0;
