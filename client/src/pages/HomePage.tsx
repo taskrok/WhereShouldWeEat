@@ -6,7 +6,6 @@ interface HomePageProps {
   onJoinRoom: (code: string) => void;
   error: string | null;
   locationLoading: boolean;
-  locationError: string | null;
   locationDenied: boolean;
   onZipSubmit: (zip: string) => Promise<void>;
   zipLoading: boolean;
@@ -16,7 +15,7 @@ interface HomePageProps {
 
 export function HomePage({
   onCreateRoom, onJoinRoom, error,
-  locationLoading, locationError,
+  locationLoading,
   locationDenied, onZipSubmit, zipLoading, zipError,
   hasLocation,
 }: HomePageProps) {

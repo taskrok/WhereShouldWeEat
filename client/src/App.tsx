@@ -68,7 +68,6 @@ function App() {
           onJoinRoom={handleJoinRoom}
           error={error}
           locationLoading={locationLoading}
-          locationError={locationError}
           locationDenied={locationDenied}
           onZipSubmit={setLocationFromZip}
           zipLoading={zipLoading}
