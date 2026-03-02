@@ -130,25 +130,16 @@ export async function searchRestaurants(
   const seenIds = new Set<string>();
   const allRestaurants: Restaurant[] = [];
 
-  // Build vibe modifier for keyword
-  const vibeModifiers: Record<string, string> = {
-    fast_casual: 'casual',
-    sit_down: 'dine in',
-    takeout: 'takeout',
-  };
-  const vibeKeyword = filters.vibes.map(v => vibeModifiers[v] || '').filter(Boolean).join(' ');
-
   // Search for each selected cuisine using keyword — max 5 to control API usage
+  // Vibe is used for sorting, NOT as a search keyword (it kills results)
   const cuisinesToSearch = filters.cuisines.slice(0, 5);
 
-  console.log(`Searching ${cuisinesToSearch.length} cuisine(s) within ${radius}m, vibe: "${vibeKeyword}"...`);
+  console.log(`Searching ${cuisinesToSearch.length} cuisine(s) within ${radius}m, vibes: ${filters.vibes.join(', ')}...`);
 
   // Run cuisine searches in parallel (up to 5 concurrent)
   const results = await Promise.all(
     cuisinesToSearch.map(cuisine => {
-      const keyword = vibeKeyword
-        ? `${CUISINE_TO_KEYWORD[cuisine]} ${vibeKeyword}`
-        : CUISINE_TO_KEYWORD[cuisine];
+      const keyword = CUISINE_TO_KEYWORD[cuisine];
       return fetchNearby(lat, lng, radius, keyword)
         .catch(err => {
           console.error(`Failed to fetch ${cuisine}:`, err);
@@ -183,16 +174,29 @@ export async function searchRestaurants(
   }));
   console.log(`Total: ${allRestaurants.length} results -> ${deduplicated.length} after dedup`);
 
-  // Sort: closest first, then by rating as tiebreaker
-  deduplicated.sort((a, b) => {
-    // Primary: distance (closest first)
-    const distDiff = a.distanceMiles - b.distanceMiles;
-    if (Math.abs(distDiff) > 0.3) return distDiff; // only break ties within ~0.3 mi
+  // Vibe matching: score places by how well they match the selected vibes
+  const vibeTypes: Record<string, string[]> = {
+    fast_casual: ['cafe', 'meal_takeaway', 'meal_delivery'],
+    sit_down: ['restaurant'],
+    takeout: ['meal_takeaway', 'meal_delivery'],
+  };
+  const vibeMatchTypes = new Set(filters.vibes.flatMap(v => vibeTypes[v] || []));
 
-    // Tiebreaker: prefer within budget
+  // Sort: vibe match > budget > distance > rating
+  deduplicated.sort((a, b) => {
+    // Prefer within budget
     const aInBudget = (a.priceLevel === 0 || a.priceLevel <= maxPriceLevel) ? 1 : 0;
     const bInBudget = (b.priceLevel === 0 || b.priceLevel <= maxPriceLevel) ? 1 : 0;
     if (bInBudget !== aInBudget) return bInBudget - aInBudget;
+
+    // Prefer vibe match
+    const aVibeMatch = a.types.some(t => vibeMatchTypes.has(t)) ? 1 : 0;
+    const bVibeMatch = b.types.some(t => vibeMatchTypes.has(t)) ? 1 : 0;
+    if (bVibeMatch !== aVibeMatch) return bVibeMatch - aVibeMatch;
+
+    // Distance (closest first)
+    const distDiff = a.distanceMiles - b.distanceMiles;
+    if (Math.abs(distDiff) > 0.3) return distDiff;
 
     // Then by rating
     return b.rating - a.rating;
