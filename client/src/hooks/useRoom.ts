@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import socket from '../socket';
 
-type RoomPhase = 'home' | 'lobby' | 'filters' | 'waiting' | 'swiping' | 'results' | 'no_match' | 'no_results';
+type RoomPhase = 'home' | 'lobby' | 'filters' | 'waiting' | 'swiping' | 'bracket' | 'results' | 'no_match' | 'no_results';
 
 export function useRoom() {
   const [roomCode, setRoomCode] = useState<string | null>(null);

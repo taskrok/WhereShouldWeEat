@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import { createRoom, joinRoom, getRoomBySocket, removeUserFromRoom } from './roomManager.js';
 import { recordSwipe, checkAllSwiped, checkBothDone, getAllMatches } from './matchDetector.js';
+import { initBracket, getCurrentMatchup, recordBracketVote, bothVoted, resolveMatchup, advanceToNext } from './bracketManager.js';
 import { mergeFilters } from '../utils/filterMerge.js';
 import { searchRestaurants } from '../services/googlePlaces.js';
 import type { UserFilters } from '../types.js';
@@ -11,12 +12,24 @@ function emitResults(io: Server, room: any): void {
   room.status = 'matched';
 
   const matches = getAllMatches(room);
-  if (matches.length > 0) {
-    io.to(room.code).emit('swipe:results', { matches });
-    console.log(`Room ${room.code}: ${matches.length} match(es)!`);
-  } else {
+  if (matches.length === 0) {
     io.to(room.code).emit('swipe:no_match', {});
     console.log(`Room ${room.code}: No matches found`);
+  } else if (matches.length === 1) {
+    io.to(room.code).emit('swipe:results', { matches });
+    console.log(`Room ${room.code}: 1 match — skipping bracket`);
+  } else {
+    // 2+ matches — start bracket
+    const bracket = initBracket(matches);
+    room.bracket = bracket;
+    const matchup = getCurrentMatchup(bracket)!;
+    io.to(room.code).emit('bracket:start', {
+      matchup: { a: matchup.a, b: matchup.b },
+      round: bracket.round,
+      remaining: bracket.pool.length,
+      totalMatches: matches.length,
+    });
+    console.log(`Room ${room.code}: ${matches.length} matches — starting bracket`);
   }
 }
 
@@ -94,20 +107,14 @@ export function setupSocketHandlers(io: Server): void {
       if (!room || room.status !== 'swiping') return;
 
       recordSwipe(room, socket.id, placeId, direction === 'right');
-      console.log(`Room ${room.code}: ${socket.id} swiped ${direction} on ${placeId} (${Object.keys(room.swipes[socket.id] || {}).length}/${room.restaurants.length})`);
 
-      // Check if THIS user is done after every swipe
       if (checkAllSwiped(room, socket.id)) {
-        // Mark this user as done
         if (!room.doneUsers) room.doneUsers = new Set();
         room.doneUsers.add(socket.id);
         socket.to(room.code).emit('swipe:partner_waiting', {});
-        console.log(`Room ${room.code}: ${socket.id} finished swiping (via swipe count)`);
       }
 
-      // Check if both are done (via swipe counts OR done flags)
       if (checkBothDone(room)) {
-        console.log(`Room ${room.code}: Both done — emitting results`);
         emitResults(io, room);
       }
     });
@@ -116,16 +123,63 @@ export function setupSocketHandlers(io: Server): void {
       const room = getRoomBySocket(socket.id);
       if (!room || room.status !== 'swiping') return;
 
-      // Mark this user as explicitly done
       if (!room.doneUsers) room.doneUsers = new Set();
       room.doneUsers.add(socket.id);
       socket.to(room.code).emit('swipe:partner_waiting', {});
-      console.log(`Room ${room.code}: ${socket.id} sent swipe:done (explicit)`);
 
-      // Check if both are done
       if (checkBothDone(room)) {
-        console.log(`Room ${room.code}: Both done — emitting results`);
         emitResults(io, room);
+      }
+    });
+
+    // --- Bracket voting ---
+    socket.on('bracket:vote', ({ placeId }: { placeId: string }) => {
+      const room = getRoomBySocket(socket.id);
+      if (!room || !room.bracket) return;
+
+      recordBracketVote(room.bracket, socket.id, placeId);
+      room.lastActivity = Date.now();
+
+      const userIds = Object.keys(room.users);
+
+      if (!bothVoted(room.bracket, userIds)) {
+        socket.to(room.code).emit('bracket:partner_voted', {});
+        console.log(`Room ${room.code}: ${socket.id} voted in bracket`);
+        return;
+      }
+
+      // Both voted — resolve
+      const result = resolveMatchup(room.bracket, userIds);
+      console.log(`Room ${room.code}: Bracket matchup resolved — agreed=${result.agreed}, coinFlip=${result.coinFlip}, bothAdvance=${result.bothAdvance}`);
+
+      const advance = advanceToNext(room.bracket);
+
+      if (advance.done) {
+        // Bracket complete — emit final winner as results
+        io.to(room.code).emit('bracket:result', {
+          winner: result.winner,
+          agreed: result.agreed,
+          coinFlip: result.coinFlip,
+          bothAdvance: result.bothAdvance,
+          done: true,
+        });
+        // After a delay, send the final winner through the results flow
+        setTimeout(() => {
+          io.to(room.code).emit('swipe:results', { matches: [advance.winner!] });
+        }, 3000);
+        console.log(`Room ${room.code}: Bracket winner — ${advance.winner!.name}`);
+      } else {
+        io.to(room.code).emit('bracket:result', {
+          winner: result.winner,
+          agreed: result.agreed,
+          coinFlip: result.coinFlip,
+          bothAdvance: result.bothAdvance,
+          done: false,
+          nextMatchup: advance.nextMatchup,
+          round: advance.round,
+          remaining: advance.remaining,
+          newRound: advance.newRound,
+        });
       }
     });
 
@@ -143,6 +197,7 @@ export function setupSocketHandlers(io: Server): void {
       room.status = 'filtering';
       room.matchedRestaurant = null;
       room.doneUsers = undefined;
+      room.bracket = undefined;
       room.lastActivity = Date.now();
 
       io.to(room.code).emit('room:restarted', {});

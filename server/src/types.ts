@@ -51,6 +51,7 @@ export interface Room {
   status: 'waiting' | 'filtering' | 'swiping' | 'matched';
   matchedRestaurant: Restaurant | null;
   doneUsers?: Set<string>;
+  bracket?: import('./socket/bracketManager.js').BracketState;
   location: { lat: number; lng: number } | null;
   lastActivity: number;
 }

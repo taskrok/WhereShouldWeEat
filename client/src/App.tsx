@@ -2,11 +2,13 @@ import { useGeolocation } from './hooks/useGeolocation';
 import { useRoom } from './hooks/useRoom';
 import { useFilters } from './hooks/useFilters';
 import { useSwipe } from './hooks/useSwipe';
+import { useBracket } from './hooks/useBracket';
 import { HomePage } from './pages/HomePage';
 import { LobbyPage } from './pages/LobbyPage';
 import { FiltersPage } from './pages/FiltersPage';
 import { WaitingPage } from './pages/WaitingPage';
 import { SwipePage } from './pages/SwipePage';
+import { BracketPage } from './pages/BracketPage';
 import { ResultsPage } from './pages/ResultsPage';
 import './styles/global.css';
 
@@ -15,6 +17,7 @@ function App() {
   const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom } = useRoom();
   const filters = useFilters(setPhase as (phase: string) => void);
   const swipe = useSwipe(filters.restaurants, setPhase as (phase: string) => void);
+  const bracket = useBracket(setPhase as (phase: string) => void);
 
   const handleCreateRoom = () => {
     if (location) {
@@ -32,11 +35,13 @@ function App() {
     leaveRoom();
     filters.resetFilters();
     swipe.resetSwipe();
+    bracket.resetBracket();
   };
 
   const handlePlayAgain = () => {
     filters.resetFilters();
     swipe.resetSwipe();
+    bracket.resetBracket();
     restartRoom();
   };
 
@@ -105,6 +110,20 @@ function App() {
           isDone={swipe.isDone}
           partnerWaiting={swipe.partnerWaiting}
           total={swipe.total}
+        />
+      )}
+
+      {phase === 'bracket' && (
+        <BracketPage
+          matchup={bracket.matchup}
+          round={bracket.round}
+          remaining={bracket.remaining}
+          totalMatches={bracket.totalMatches}
+          voted={bracket.voted}
+          partnerVoted={bracket.partnerVoted}
+          result={bracket.result}
+          showingResult={bracket.showingResult}
+          onVote={bracket.vote}
         />
       )}
 
