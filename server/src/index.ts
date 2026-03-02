@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { PORT, CLIENT_URL, GOOGLE_PLACES_API_KEY } from './config.js';
+import { PORT, CLIENT_URL } from './config.js';
 import placesRouter from './routes/places.js';
 import { setupSocketHandlers } from './socket/handler.js';
 import { geocodeZip } from './services/geocode.js';

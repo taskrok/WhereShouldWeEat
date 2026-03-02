@@ -1,18 +1,18 @@
-import { GOOGLE_PLACES_API_KEY } from '../config.js';
-
 export async function geocodeZip(zip: string): Promise<{ lat: number; lng: number } | { error: string }> {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${zip}&key=${GOOGLE_PLACES_API_KEY}`;
+  // Use the free Nominatim geocoder (OpenStreetMap) — no API key needed
+  const url = `https://nominatim.openstreetmap.org/search?postalcode=${zip}&country=US&format=json&limit=1`;
 
   try {
-    const res = await fetch(url);
-    const data = await res.json() as any;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'WhereShouldWeEat/1.0' },
+    });
+    const data = await res.json() as any[];
 
-    if (data.status !== 'OK' || !data.results?.length) {
+    if (!data.length) {
       return { error: 'Could not find that zip code. Please try another.' };
     }
 
-    const loc = data.results[0].geometry.location;
-    return { lat: loc.lat, lng: loc.lng };
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   } catch {
     return { error: 'Failed to look up zip code. Please try again.' };
   }
