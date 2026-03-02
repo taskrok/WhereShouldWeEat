@@ -2,9 +2,10 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { PORT, CLIENT_URL } from './config.js';
+import { PORT, CLIENT_URL, GOOGLE_PLACES_API_KEY } from './config.js';
 import placesRouter from './routes/places.js';
 import { setupSocketHandlers } from './socket/handler.js';
+import { geocodeZip } from './services/geocode.js';
 
 const app = express();
 const server = createServer(app);
@@ -39,6 +40,16 @@ app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', origins: allowedOrigins });
+});
+
+app.get('/api/geocode', async (req, res) => {
+  const zip = (req.query.zip as string || '').trim();
+  if (!zip || !/^\d{5}$/.test(zip)) {
+    res.json({ error: 'Please enter a valid 5-digit zip code' });
+    return;
+  }
+  const result = await geocodeZip(zip);
+  res.json(result);
 });
 
 app.use('/api/places', placesRouter);

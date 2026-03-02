@@ -275,6 +275,47 @@ body {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* --- Zip Code Input --- */
+.zip-prompt {
+  font-size: 15px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.zip-input-group {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.zip-input__field {
+  flex: 1;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.zip-input__field::placeholder {
+  font-weight: 400;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.zip-input__field:focus {
+  border-color: var(--primary);
+}
+
 /* --- Room Code Input --- */
 .room-code-input {
   display: flex;

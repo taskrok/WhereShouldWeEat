@@ -2,9 +2,10 @@ import { useState } from 'react';
 
 interface RoomCodeInputProps {
   onJoin: (code: string) => void;
+  disabled?: boolean;
 }
 
-export function RoomCodeInput({ onJoin }: RoomCodeInputProps) {
+export function RoomCodeInput({ onJoin, disabled }: RoomCodeInputProps) {
   const [code, setCode] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,7 +31,7 @@ export function RoomCodeInput({ onJoin }: RoomCodeInputProps) {
       <button
         type="submit"
         className="btn btn--secondary"
-        disabled={code.trim().length < 3}
+        disabled={code.trim().length < 3 || disabled}
       >
         Join
       </button>
