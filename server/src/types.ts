@@ -39,6 +39,7 @@ export interface Restaurant {
 export interface RoomUser {
   socketId: string;
   role: 'creator' | 'joiner';
+  location: { lat: number; lng: number };
 }
 
 export interface Room {

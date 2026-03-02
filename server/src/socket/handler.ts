@@ -32,7 +32,7 @@ export function setupSocketHandlers(io: Server): void {
     });
 
     socket.on('room:join', ({ code, lat, lng }: { code: string; lat: number; lng: number }) => {
-      const room = joinRoom(socket.id, code);
+      const room = joinRoom(socket.id, code, lat, lng);
       if (!room) {
         socket.emit('room:error', { message: 'Room not found or already full' });
         return;

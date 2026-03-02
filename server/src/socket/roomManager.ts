@@ -9,7 +9,7 @@ export function createRoom(socketId: string, lat: number, lng: number): Room {
   const room: Room = {
     code,
     users: {
-      [socketId]: { socketId, role: 'creator' },
+      [socketId]: { socketId, role: 'creator', location: { lat, lng } },
     },
     filters: { [socketId]: null },
     restaurants: [],
@@ -24,18 +24,32 @@ export function createRoom(socketId: string, lat: number, lng: number): Room {
   return room;
 }
 
-export function joinRoom(socketId: string, code: string): Room | null {
+export function joinRoom(socketId: string, code: string, lat?: number, lng?: number): Room | null {
   const normalizedCode = code.toUpperCase().trim();
   const room = rooms.get(normalizedCode);
   if (!room) return null;
   if (Object.keys(room.users).length >= 2) return null;
 
-  room.users[socketId] = { socketId, role: 'joiner' };
+  const joinerLocation = (lat != null && lng != null) ? { lat, lng } : room.location!;
+  room.users[socketId] = { socketId, role: 'joiner', location: joinerLocation };
   room.filters[socketId] = null;
   room.swipes[socketId] = {};
   room.status = 'filtering';
   room.lastActivity = Date.now();
   socketToRoom.set(socketId, normalizedCode);
+
+  // Update room location to midpoint between both partners
+  const users = Object.values(room.users);
+  if (users.length === 2) {
+    const locA = users[0].location;
+    const locB = users[1].location;
+    room.location = {
+      lat: (locA.lat + locB.lat) / 2,
+      lng: (locA.lng + locB.lng) / 2,
+    };
+    console.log(`Room ${normalizedCode}: midpoint = ${room.location.lat.toFixed(4)}, ${room.location.lng.toFixed(4)}`);
+  }
+
   return room;
 }
 
