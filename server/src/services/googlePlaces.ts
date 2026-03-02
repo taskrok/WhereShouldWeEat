@@ -1,4 +1,4 @@
-import { GOOGLE_PLACES_API_KEY, USE_MOCK_DATA } from '../config.js';
+import { GOOGLE_PLACES_API_KEY, USE_MOCK_DATA, SERVER_URL } from '../config.js';
 import { getMockRestaurants } from './mockPlaces.js';
 import type { Restaurant, MergedFilters, CuisineType, DistanceType, BudgetType } from '../types.js';
 
@@ -52,7 +52,7 @@ function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number):
 function transformPlace(place: any): Restaurant {
   let photoUrl: string | null = null;
   if (place.photos?.length > 0) {
-    photoUrl = `/api/places/photo?ref=${encodeURIComponent(place.photos[0].photo_reference)}&maxWidth=400`;
+    photoUrl = `${SERVER_URL}/api/places/photo?ref=${encodeURIComponent(place.photos[0].photo_reference)}&maxWidth=400`;
   }
 
   return {
