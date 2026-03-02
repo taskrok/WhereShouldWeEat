@@ -8,13 +8,14 @@ export function mergeFilters(allFilters: UserFilters[]): MergedFilters {
     return { cuisines: [], budget: '$$', maxDistance: 15, vibes: [], dietary: [] };
   }
 
-  // Cuisines: intersect all lists; if empty, fall back to union
-  let cuisineIntersection = [...allFilters[0].cuisines];
-  for (let i = 1; i < allFilters.length; i++) {
-    cuisineIntersection = cuisineIntersection.filter(c => allFilters[i].cuisines.includes(c));
+  // Cuisines: union of all picks, sorted by how many players picked each (shared first)
+  const cuisineCounts = new Map<string, number>();
+  for (const f of allFilters) {
+    for (const c of f.cuisines) {
+      cuisineCounts.set(c, (cuisineCounts.get(c) || 0) + 1);
+    }
   }
-  const cuisineUnion = [...new Set(allFilters.flatMap(f => f.cuisines))];
-  const cuisines = cuisineIntersection.length > 0 ? cuisineIntersection : cuisineUnion;
+  const cuisines = [...cuisineCounts.keys()].sort((a, b) => cuisineCounts.get(b)! - cuisineCounts.get(a)!) as typeof allFilters[0]['cuisines'];
 
   // Budget: take the lowest (most restrictive)
   const budgetRankVal = Math.min(...allFilters.map(f => BUDGET_RANK[f.budget]));
