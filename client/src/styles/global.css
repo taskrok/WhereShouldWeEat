@@ -1043,13 +1043,11 @@ body {
 }
 
 .bracket-matchup {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0;
   width: 100%;
   max-width: 380px;
-  min-height: 0;
 }
 
 .bracket-vs {
@@ -1062,7 +1060,6 @@ body {
 }
 
 .bracket-card {
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1077,7 +1074,6 @@ body {
   color: var(--text);
   font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
-  min-height: 0;
 }
 
 .bracket-card:active:not(:disabled) {
