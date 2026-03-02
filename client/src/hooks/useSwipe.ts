@@ -36,6 +36,15 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
     pendingSwipe.current = false;
   }, []);
 
+  // Auto-reset when a new restaurant list arrives (new round starting)
+  useEffect(() => {
+    if (restaurants.length > 0) {
+      setCurrentIndex(0);
+      setPartnerWaiting(false);
+      pendingSwipe.current = false;
+    }
+  }, [restaurants]);
+
   useEffect(() => {
     const onResults = ({ matches: m }: { matches: Restaurant[] }) => {
       setMatches(m);

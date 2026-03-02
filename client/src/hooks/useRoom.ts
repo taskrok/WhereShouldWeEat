@@ -53,6 +53,7 @@ export function useRoom(onRestartedCallback?: () => void) {
       setError('Your partner left the room');
       setPhase('home');
       setRoomCode(null);
+      onRestartedCallback?.();
     };
 
     const onRestarted = () => {
