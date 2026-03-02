@@ -3,7 +3,7 @@ import socket from '../socket';
 
 type RoomPhase = 'home' | 'lobby' | 'filters' | 'waiting' | 'swiping' | 'bracket' | 'results' | 'no_match' | 'no_results';
 
-export function useRoom() {
+export function useRoom(onRestartedCallback?: () => void) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [phase, setPhase] = useState<RoomPhase>('home');
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +58,7 @@ export function useRoom() {
     const onRestarted = () => {
       setPhase('filters');
       setError(null);
+      onRestartedCallback?.();
     };
 
     const onConnect = () => setConnected(true);
@@ -82,7 +83,7 @@ export function useRoom() {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
     };
-  }, []);
+  }, [onRestartedCallback]);
 
   return { roomCode, phase, setPhase, error, setError, connected, createRoom, joinRoom, leaveRoom, restartRoom };
 }

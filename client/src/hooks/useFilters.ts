@@ -37,6 +37,7 @@ export function useFilters(setPhase: (phase: string) => void) {
     setVibe(null);
     setBudget(null);
     setMaxDistance(null);
+    setRestaurants([]);
     setNoResultsMessage(null);
   }, []);
 

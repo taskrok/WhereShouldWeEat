@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useRoom } from './hooks/useRoom';
 import { useFilters } from './hooks/useFilters';
@@ -14,10 +15,18 @@ import './styles/global.css';
 
 function App() {
   const { location, locationLabel, loading: locationLoading, denied: locationDenied, setLocationFromZip, zipLoading, zipError } = useGeolocation();
-  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom } = useRoom();
+  const resetRef = useRef<() => void>(() => {});
+  const onRestarted = useCallback(() => resetRef.current(), []);
+  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom } = useRoom(onRestarted);
   const filters = useFilters(setPhase as (phase: string) => void);
   const swipe = useSwipe(filters.restaurants, setPhase as (phase: string) => void);
   const bracket = useBracket(setPhase as (phase: string) => void);
+
+  resetRef.current = () => {
+    filters.resetFilters();
+    swipe.resetSwipe();
+    bracket.resetBracket();
+  };
 
   const handleCreateRoom = () => {
     if (location) {
@@ -39,9 +48,6 @@ function App() {
   };
 
   const handlePlayAgain = () => {
-    filters.resetFilters();
-    swipe.resetSwipe();
-    bracket.resetBracket();
     restartRoom();
   };
 

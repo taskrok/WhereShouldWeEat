@@ -9,7 +9,7 @@ export function useSwipe(restaurants: Restaurant[], setPhase: (phase: string) =>
   const pendingSwipe = useRef(false);
 
   const currentRestaurant = restaurants[currentIndex] || null;
-  const isDone = currentIndex >= restaurants.length;
+  const isDone = restaurants.length > 0 && currentIndex >= restaurants.length;
 
   const swipe = useCallback((direction: 'left' | 'right') => {
     if (!currentRestaurant || pendingSwipe.current) return;
