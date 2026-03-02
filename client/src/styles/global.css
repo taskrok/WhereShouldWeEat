@@ -978,6 +978,11 @@ body {
   flex-shrink: 0;
 }
 
+.results-bracket {
+  margin-top: 16px;
+  width: 100%;
+}
+
 .results-restart {
   margin-top: 8px;
 }

@@ -19,17 +19,10 @@ function emitResults(io: Server, room: any): void {
     io.to(room.code).emit('swipe:results', { matches });
     console.log(`Room ${room.code}: 1 match — skipping bracket`);
   } else {
-    // 2+ matches — start bracket
-    const bracket = initBracket(matches);
-    room.bracket = bracket;
-    const matchup = getCurrentMatchup(bracket)!;
-    io.to(room.code).emit('bracket:start', {
-      matchup: { a: matchup.a, b: matchup.b },
-      round: bracket.round,
-      remaining: bracket.pool.length,
-      totalMatches: matches.length,
-    });
-    console.log(`Room ${room.code}: ${matches.length} matches — starting bracket`);
+    // 2+ matches — show all matches first, let partners decide if they want a bracket
+    room.matchList = matches;
+    io.to(room.code).emit('swipe:results', { matches });
+    console.log(`Room ${room.code}: ${matches.length} matches — showing list`);
   }
 }
 
@@ -183,6 +176,24 @@ export function setupSocketHandlers(io: Server): void {
       }
     });
 
+    // Either partner can trigger the bracket from the results list
+    socket.on('bracket:request', () => {
+      const room = getRoomBySocket(socket.id);
+      if (!room || !room.matchList || room.matchList.length < 2) return;
+      if (room.bracket) return; // Already started
+
+      const bracket = initBracket(room.matchList);
+      room.bracket = bracket;
+      const matchup = getCurrentMatchup(bracket)!;
+      io.to(room.code).emit('bracket:start', {
+        matchup: { a: matchup.a, b: matchup.b },
+        round: bracket.round,
+        remaining: bracket.pool.length,
+        totalMatches: room.matchList.length,
+      });
+      console.log(`Room ${room.code}: Bracket started by ${socket.id}`);
+    });
+
     socket.on('room:restart', () => {
       const room = getRoomBySocket(socket.id);
       if (!room) return;
@@ -198,6 +209,7 @@ export function setupSocketHandlers(io: Server): void {
       room.matchedRestaurant = null;
       room.doneUsers = undefined;
       room.bracket = undefined;
+      room.matchList = undefined;
       room.lastActivity = Date.now();
 
       io.to(room.code).emit('room:restarted', {});

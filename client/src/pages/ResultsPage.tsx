@@ -5,9 +5,10 @@ import type { Restaurant } from '../types';
 interface ResultsPageProps {
   matches: Restaurant[];
   onPlayAgain: () => void;
+  onStartBracket?: () => void;
 }
 
-export function ResultsPage({ matches, onPlayAgain }: ResultsPageProps) {
+export function ResultsPage({ matches, onPlayAgain, onStartBracket }: ResultsPageProps) {
   const [selected, setSelected] = useState<Restaurant | null>(null);
 
   if (selected) {
@@ -73,6 +74,12 @@ export function ResultsPage({ matches, onPlayAgain }: ResultsPageProps) {
           );
         })}
       </div>
+
+      {onStartBracket && matches.length >= 2 && (
+        <button className="btn btn--primary btn--large results-bracket" onClick={onStartBracket}>
+          Can't decide? Start the bracket!
+        </button>
+      )}
 
       <button className="btn btn--ghost results-restart" onClick={onPlayAgain}>
         Play Again

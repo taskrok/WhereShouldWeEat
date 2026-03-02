@@ -4,6 +4,7 @@ import { useRoom } from './hooks/useRoom';
 import { useFilters } from './hooks/useFilters';
 import { useSwipe } from './hooks/useSwipe';
 import { useBracket } from './hooks/useBracket';
+import socket from './socket';
 import { HomePage } from './pages/HomePage';
 import { LobbyPage } from './pages/LobbyPage';
 import { FiltersPage } from './pages/FiltersPage';
@@ -49,6 +50,10 @@ function App() {
 
   const handlePlayAgain = () => {
     restartRoom();
+  };
+
+  const handleStartBracket = () => {
+    socket.emit('bracket:request');
   };
 
   const showHeader = phase !== 'home';
@@ -137,6 +142,7 @@ function App() {
         <ResultsPage
           matches={swipe.matches}
           onPlayAgain={handlePlayAgain}
+          onStartBracket={swipe.matches.length >= 2 ? handleStartBracket : undefined}
         />
       )}
 
