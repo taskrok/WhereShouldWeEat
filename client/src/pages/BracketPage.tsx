@@ -17,7 +17,6 @@ interface BracketPageProps {
   matchup: BracketMatchup | null;
   round: number;
   remaining: number;
-  totalMatches: number;
   voted: boolean;
   partnerVoted: boolean;
   result: BracketResult | null;
@@ -62,7 +61,7 @@ function BracketCard({ restaurant, onPick, disabled, isWinner, isLoser }: {
 }
 
 export function BracketPage({
-  matchup, round, remaining, totalMatches,
+  matchup, round, remaining,
   voted, partnerVoted, result, showingResult, onVote,
 }: BracketPageProps) {
   if (!matchup) return null;

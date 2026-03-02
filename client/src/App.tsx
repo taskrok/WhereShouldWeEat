@@ -125,7 +125,6 @@ function App() {
           matchup={bracket.matchup}
           round={bracket.round}
           remaining={bracket.remaining}
-          totalMatches={bracket.totalMatches}
           voted={bracket.voted}
           partnerVoted={bracket.partnerVoted}
           result={bracket.result}
