@@ -11,13 +11,14 @@ interface HomePageProps {
   zipLoading: boolean;
   zipError: string | null;
   hasLocation: boolean;
+  locationLabel: string | null;
 }
 
 export function HomePage({
   onCreateRoom, onJoinRoom, error,
   locationLoading,
   locationDenied, onZipSubmit, zipLoading, zipError,
-  hasLocation,
+  hasLocation, locationLabel,
 }: HomePageProps) {
   const [zip, setZip] = useState('');
 
@@ -34,6 +35,9 @@ export function HomePage({
       <div className="home-hero">
         <h1 className="home-hero__title">Where Should We Eat?</h1>
         <p className="home-hero__subtitle">Stop arguing. Start swiping.</p>
+        {locationLabel && (
+          <p className="home-hero__location">Searching near {locationLabel}</p>
+        )}
       </div>
 
       {error && (

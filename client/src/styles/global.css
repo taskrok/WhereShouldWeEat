@@ -249,6 +249,12 @@ body {
   color: var(--text-muted);
 }
 
+.home-hero__location {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
 .home-actions {
   display: flex;
   flex-direction: column;

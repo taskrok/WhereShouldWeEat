@@ -78,6 +78,7 @@ function App() {
           zipLoading={zipLoading}
           zipError={zipError}
           hasLocation={!!location}
+          locationLabel={locationLabel}
         />
       )}
 

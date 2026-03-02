@@ -48,6 +48,7 @@ export function useGeolocation(): GeolocationState {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         setLocation({ lat, lng });
+        setLocationLabel('your location');
         setLoading(false);
         reverseGeocode(lat, lng);
       },
@@ -69,11 +70,9 @@ export function useGeolocation(): GeolocationState {
         setZipError(data.error);
       } else {
         setLocation({ lat: data.lat, lng: data.lng });
-        setLocationLabel(zip);
+        setLocationLabel(data.label || zip);
         setError(null);
         setDenied(false);
-        // Try to resolve a city name for the zip
-        reverseGeocode(data.lat, data.lng);
       }
     } catch {
       setZipError('Failed to look up zip code. Try again.');
