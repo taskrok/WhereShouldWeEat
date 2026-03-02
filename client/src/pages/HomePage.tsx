@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { RoomCodeInput } from '../components/RoomCodeInput';
+import { Logo } from '../components/Logo';
 
 interface HomePageProps {
   onCreateRoom: () => void;
@@ -33,6 +34,7 @@ export function HomePage({
   return (
     <div className="page page--home">
       <div className="home-hero">
+        <Logo size={88} />
         <h1 className="home-hero__title">Where Should We Eat?</h1>
         <p className="home-hero__subtitle">Stop arguing. Start swiping.</p>
         {locationLabel && (
