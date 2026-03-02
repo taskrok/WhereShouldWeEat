@@ -6,12 +6,14 @@ export type CuisineType =
 export type VibeType = 'fast_casual' | 'sit_down' | 'takeout';
 export type BudgetType = '$' | '$$' | '$$$';
 export type DistanceType = 5 | 15 | 30;
+export type DietaryType = 'vegetarian' | 'vegan' | 'halal' | 'gluten_free';
 
 export interface UserFilters {
   cuisines: CuisineType[];
   vibe: VibeType;
   budget: BudgetType;
   maxDistance: DistanceType;
+  dietary?: DietaryType[];
 }
 
 export interface Restaurant {

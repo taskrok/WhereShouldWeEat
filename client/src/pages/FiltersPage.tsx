@@ -1,5 +1,5 @@
 import { FilterOption } from '../components/FilterOption';
-import type { CuisineType, VibeType, BudgetType, DistanceType } from '../types';
+import type { CuisineType, VibeType, BudgetType, DistanceType, DietaryType } from '../types';
 
 const CUISINES: { value: CuisineType; label: string; emoji: string }[] = [
   { value: 'mexican', label: 'Mexican', emoji: '🌮' },
@@ -16,6 +16,13 @@ const CUISINES: { value: CuisineType; label: string; emoji: string }[] = [
   { value: 'pizza', label: 'Pizza', emoji: '🍕' },
   { value: 'sushi', label: 'Sushi', emoji: '🍣' },
   { value: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+];
+
+const DIETARY_OPTIONS: { value: DietaryType; label: string; emoji: string }[] = [
+  { value: 'vegetarian', label: 'Vegetarian', emoji: '🥬' },
+  { value: 'vegan', label: 'Vegan', emoji: '🌱' },
+  { value: 'halal', label: 'Halal', emoji: '🍖' },
+  { value: 'gluten_free', label: 'Gluten-Free', emoji: '🌾' },
 ];
 
 const VIBES: { value: VibeType; label: string; emoji: string }[] = [
@@ -39,6 +46,8 @@ const DISTANCES: { value: DistanceType; label: string }[] = [
 interface FiltersPageProps {
   cuisines: CuisineType[];
   toggleCuisine: (c: CuisineType) => void;
+  dietary: DietaryType[];
+  toggleDietary: (d: DietaryType) => void;
   vibe: VibeType | null;
   setVibe: (v: VibeType) => void;
   budget: BudgetType | null;
@@ -53,6 +62,7 @@ interface FiltersPageProps {
 
 export function FiltersPage({
   cuisines, toggleCuisine,
+  dietary, toggleDietary,
   vibe, setVibe,
   budget, setBudget,
   maxDistance, setMaxDistance,
@@ -82,6 +92,22 @@ export function FiltersPage({
               emoji={c.emoji}
               selected={cuisines.includes(c.value)}
               onClick={() => toggleCuisine(c.value)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="filter-section">
+        <h2 className="filter-section__title">Dietary Needs</h2>
+        <p className="filter-section__hint">Optional</p>
+        <div className="filter-chips">
+          {DIETARY_OPTIONS.map(d => (
+            <FilterOption
+              key={d.value}
+              label={d.label}
+              emoji={d.emoji}
+              selected={dietary.includes(d.value)}
+              onClick={() => toggleDietary(d.value)}
             />
           ))}
         </div>

@@ -4,17 +4,20 @@ import type { Restaurant } from '../types';
 interface SwipeCardProps {
   restaurant: Restaurant;
   onSwipe: (direction: 'left' | 'right') => void;
+  onTap?: (restaurant: Restaurant) => void;
   active: boolean;
 }
 
 const SWIPE_THRESHOLD = 80;
+const TAP_THRESHOLD = 5;
 
-export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
+export function SwipeCard({ restaurant, onSwipe, onTap, active }: SwipeCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [startX, setStartX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<'left' | 'right' | null>(null);
+  const hasMoved = useRef(false);
 
   const priceDollars = restaurant.priceLevel > 0
     ? '$'.repeat(restaurant.priceLevel)
@@ -26,11 +29,16 @@ export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
     if (!active) return;
     setStartX(clientX);
     setDragging(true);
+    hasMoved.current = false;
   };
 
   const handleMove = (clientX: number) => {
     if (!dragging) return;
-    setOffset(clientX - startX);
+    const newOffset = clientX - startX;
+    if (Math.abs(newOffset) > TAP_THRESHOLD) {
+      hasMoved.current = true;
+    }
+    setOffset(newOffset);
   };
 
   const handleEnd = () => {
@@ -42,6 +50,9 @@ export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
       setExiting(direction);
       onSwipe(direction);
     } else {
+      if (!hasMoved.current && onTap) {
+        onTap(restaurant);
+      }
       setOffset(0);
     }
   };
@@ -95,6 +106,9 @@ export function SwipeCard({ restaurant, onSwipe, active }: SwipeCardProps) {
         <p className="swipe-card__address">{restaurant.address}</p>
         {!restaurant.openNow && (
           <span className="swipe-card__closed">Currently closed</span>
+        )}
+        {active && onTap && (
+          <p className="swipe-card__tap-hint">Tap for details</p>
         )}
       </div>
     </div>

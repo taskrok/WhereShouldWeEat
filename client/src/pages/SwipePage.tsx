@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { SwipeStack } from '../components/SwipeStack';
+import { DetailModal } from '../components/DetailModal';
 import type { Restaurant } from '../types';
 
 interface SwipePageProps {
@@ -8,9 +10,12 @@ interface SwipePageProps {
   isDone: boolean;
   partnerWaiting: boolean;
   total: number;
+  limitedResults?: boolean;
 }
 
-export function SwipePage({ restaurants, currentIndex, onSwipe, isDone, partnerWaiting, total }: SwipePageProps) {
+export function SwipePage({ restaurants, currentIndex, onSwipe, isDone, partnerWaiting, total, limitedResults }: SwipePageProps) {
+  const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
+
   return (
     <div className="page page--swipe">
       <div className="swipe-header">
@@ -19,6 +24,9 @@ export function SwipePage({ restaurants, currentIndex, onSwipe, isDone, partnerW
         {partnerWaiting && (
           <p className="swipe-partner-status">Your partner is done - keep swiping!</p>
         )}
+        {limitedResults && (
+          <p className="swipe-limited-notice">Fewer options right now — some places are closed</p>
+        )}
       </div>
 
       {!isDone ? (
@@ -26,6 +34,7 @@ export function SwipePage({ restaurants, currentIndex, onSwipe, isDone, partnerW
           restaurants={restaurants}
           currentIndex={currentIndex}
           onSwipe={onSwipe}
+          onTap={setDetailRestaurant}
         />
       ) : (
         <div className="waiting-content">
@@ -33,6 +42,13 @@ export function SwipePage({ restaurants, currentIndex, onSwipe, isDone, partnerW
           <h2>All swiped!</h2>
           <p>Waiting for your partner to finish...</p>
         </div>
+      )}
+
+      {detailRestaurant && (
+        <DetailModal
+          restaurant={detailRestaurant}
+          onClose={() => setDetailRestaurant(null)}
+        />
       )}
     </div>
   );

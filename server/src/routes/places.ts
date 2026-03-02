@@ -1,18 +1,35 @@
 import { Router } from 'express';
-import { getPhotoUrl } from '../services/googlePlaces.js';
+import { getPhotoUrl, getPlaceDetails } from '../services/googlePlaces.js';
 
 const router = Router();
 
-router.get('/photo', async (req, res) => {
-  const ref = req.query.ref as string;
-  const maxWidth = parseInt(req.query.maxWidth as string || '400', 10);
+router.get('/details', async (req, res) => {
+  const placeId = req.query.placeId as string;
 
-  if (!ref) {
-    res.status(400).json({ error: 'Missing photo ref parameter' });
+  if (!placeId) {
+    res.status(400).json({ error: 'Missing placeId parameter' });
     return;
   }
 
-  const response = await getPhotoUrl(ref, maxWidth);
+  const details = await getPlaceDetails(placeId);
+  if (!details) {
+    res.status(404).json({ error: 'Place not found' });
+    return;
+  }
+
+  res.json(details);
+});
+
+router.get('/photo', async (req, res) => {
+  const name = req.query.name as string;
+  const maxWidth = parseInt(req.query.maxWidth as string || '400', 10);
+
+  if (!name) {
+    res.status(400).json({ error: 'Missing photo name parameter' });
+    return;
+  }
+
+  const response = await getPhotoUrl(name, maxWidth);
   if (!response || !response.ok) {
     res.status(404).json({ error: 'Photo not found' });
     return;

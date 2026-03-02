@@ -72,7 +72,7 @@ export function setupSocketHandlers(io: Server): void {
       console.log(`Room ${room.code}: Merged:`, JSON.stringify(merged));
 
       try {
-        const restaurants = await searchRestaurants(
+        const { restaurants, limitedResults } = await searchRestaurants(
           room.location!.lat,
           room.location!.lng,
           merged
@@ -91,8 +91,8 @@ export function setupSocketHandlers(io: Server): void {
 
         room.restaurants = restaurants;
         room.status = 'swiping';
-        io.to(room.code).emit('filters:both_ready', { restaurants });
-        console.log(`Room ${room.code}: ${restaurants.length} restaurants found`);
+        io.to(room.code).emit('filters:both_ready', { restaurants, limitedResults });
+        console.log(`Room ${room.code}: ${restaurants.length} restaurants found${limitedResults ? ' (limited — many places closed)' : ''}`);
       } catch (err) {
         console.error('Failed to fetch restaurants:', err);
         io.to(room.code).emit('room:error', { message: 'Failed to fetch restaurants. Please try again.' });

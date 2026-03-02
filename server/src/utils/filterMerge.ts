@@ -22,5 +22,8 @@ export function mergeFilters(a: UserFilters, b: UserFilters): MergedFilters {
     ? [a.vibe]
     : [a.vibe, b.vibe];
 
-  return { cuisines, budget, maxDistance, vibes };
+  // Dietary: union of both partners' needs
+  const dietary = [...new Set([...(a.dietary || []), ...(b.dietary || [])])];
+
+  return { cuisines, budget, maxDistance, vibes, dietary };
 }

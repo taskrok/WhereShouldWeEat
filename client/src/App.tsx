@@ -99,6 +99,8 @@ function App() {
         <FiltersPage
           cuisines={filters.cuisines}
           toggleCuisine={filters.toggleCuisine}
+          dietary={filters.dietary}
+          toggleDietary={filters.toggleDietary}
           vibe={filters.vibe}
           setVibe={filters.setVibe}
           budget={filters.budget}
@@ -122,6 +124,7 @@ function App() {
           isDone={swipe.isDone}
           partnerWaiting={swipe.partnerWaiting}
           total={swipe.total}
+          limitedResults={filters.limitedResults}
         />
       )}
 

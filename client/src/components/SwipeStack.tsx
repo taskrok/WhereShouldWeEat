@@ -5,9 +5,10 @@ interface SwipeStackProps {
   restaurants: Restaurant[];
   currentIndex: number;
   onSwipe: (direction: 'left' | 'right') => void;
+  onTap?: (restaurant: Restaurant) => void;
 }
 
-export function SwipeStack({ restaurants, currentIndex, onSwipe }: SwipeStackProps) {
+export function SwipeStack({ restaurants, currentIndex, onSwipe, onTap }: SwipeStackProps) {
   // Show current card and next card (for peek effect)
   const visibleCards = restaurants.slice(currentIndex, currentIndex + 2);
 
@@ -19,6 +20,7 @@ export function SwipeStack({ restaurants, currentIndex, onSwipe }: SwipeStackPro
             key={restaurant.placeId}
             restaurant={restaurant}
             onSwipe={onSwipe}
+            onTap={onTap}
             active={i === 0}
           />
         )).reverse()}
