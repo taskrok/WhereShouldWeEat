@@ -1142,6 +1142,22 @@ body {
   text-align: center;
   color: var(--text-muted);
   font-size: 15px;
+  padding: 8px 0;
+}
+
+.bracket-status--waiting {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.bracket-status--waiting p {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .bracket-final-text {

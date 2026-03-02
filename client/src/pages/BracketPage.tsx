@@ -116,13 +116,14 @@ export function BracketPage({
       </div>
 
       {!showingResult && (
-        <div className="bracket-status">
+        <div className={`bracket-status ${voted ? 'bracket-status--waiting' : ''}`}>
           {!voted ? (
             <p>Tap your pick!</p>
-          ) : partnerVoted ? (
-            <p>Revealing...</p>
           ) : (
-            <p>Waiting for your partner...</p>
+            <>
+              <div className="spinner" />
+              <p>{partnerVoted ? 'Revealing...' : 'Waiting for your partner...'}</p>
+            </>
           )}
         </div>
       )}
