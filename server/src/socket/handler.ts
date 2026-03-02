@@ -281,6 +281,9 @@ function actuallyRemoveUser(io: Server, socket: Socket): void {
   if (!result) return;
 
   const { room, remainingIds, wasResetToLobby } = result;
+
+  // Leave Socket.IO room so this socket doesn't receive broadcasts meant for remaining players
+  socket.leave(room.code);
   const playerCount = remainingIds.length;
 
   // Notify remaining players
