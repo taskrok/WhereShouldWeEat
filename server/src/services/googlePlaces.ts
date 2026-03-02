@@ -51,6 +51,12 @@ const FOOD_TYPES = new Set([
   'cafe', 'bakery', 'bar',
 ]);
 
+const EXCLUDED_TYPES = new Set([
+  'gas_station', 'convenience_store', 'grocery_store', 'supermarket',
+  'car_wash', 'car_repair', 'drugstore', 'pharmacy', 'lodging',
+  'shopping_mall', 'department_store',
+]);
+
 const BASE_URL = 'https://places.googleapis.com/v1';
 
 const SEARCH_FIELD_MASK = [
@@ -153,7 +159,10 @@ async function fetchNearby(
   }
 
   return results
-    .filter((p: any) => (p.types || []).some((t: string) => FOOD_TYPES.has(t)))
+    .filter((p: any) => {
+      const types: string[] = p.types || [];
+      return types.some(t => FOOD_TYPES.has(t)) && !types.some(t => EXCLUDED_TYPES.has(t));
+    })
     .map(transformPlace);
 }
 
