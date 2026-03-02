@@ -1,4 +1,5 @@
 import { RoomCodeDisplay } from '../components/RoomCodeDisplay';
+import { PlayerRoster } from '../components/PlayerRoster';
 
 interface LobbyPageProps {
   roomCode: string;
@@ -11,9 +12,7 @@ export function LobbyPage({ roomCode, playerCount, isCreator, onStartGame }: Lob
   return (
     <div className="page page--lobby">
       <RoomCodeDisplay code={roomCode} />
-      <p className="lobby-player-count">
-        {playerCount} player{playerCount !== 1 ? 's' : ''} in room
-      </p>
+      <PlayerRoster playerCount={playerCount} isCreator={isCreator} />
       <div className="lobby-waiting">
         {isCreator ? (
           <button
