@@ -490,6 +490,12 @@ body {
   50%      { transform: translateX(-50%) translateY(-3px); }
 }
 
+.lobby-solo-hint {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+}
+
 .lobby-waiting {
   text-align: center;
   color: var(--text-muted);

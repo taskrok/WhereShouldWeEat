@@ -15,12 +15,17 @@ export function LobbyPage({ roomCode, playerCount, isCreator, onStartGame }: Lob
       <PlayerRoster playerCount={playerCount} isCreator={isCreator} />
       <div className="lobby-waiting">
         {isCreator ? (
-          <button
-            className="btn btn--primary btn--large"
-            onClick={onStartGame}
-          >
-            {playerCount < 2 ? 'Go Solo' : 'Start Game'}
-          </button>
+          <>
+            <button
+              className="btn btn--primary btn--large"
+              onClick={onStartGame}
+            >
+              {playerCount < 2 ? 'Go Solo' : 'Start Game'}
+            </button>
+            {playerCount < 2 && (
+              <p className="lobby-solo-hint">or wait for others to join you</p>
+            )}
+          </>
         ) : (
           <>
             <div className="spinner" />
