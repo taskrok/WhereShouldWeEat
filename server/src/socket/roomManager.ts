@@ -183,13 +183,14 @@ export function getRoomBySocket(socketId: string): Room | null {
   return rooms.get(code) || null;
 }
 
-export function removeUserFromRoom(socketId: string): { room: Room; remainingIds: string[]; wasResetToLobby: boolean } | null {
+export function removeUserFromRoom(socketId: string): { room: Room; remainingIds: string[]; wasResetToLobby: boolean; wasCreator: boolean; wasLobby: boolean } | null {
   const code = socketToRoom.get(socketId);
   if (!code) return null;
   const room = rooms.get(code);
   if (!room) return null;
 
   const wasCreator = room.users[socketId]?.role === 'creator';
+  const wasLobby = room.status === 'lobby';
 
   // Remove from users only — keep filters/swipes/doneUsers intact
   delete room.users[socketId];
@@ -239,7 +240,25 @@ export function removeUserFromRoom(socketId: string): { room: Room; remainingIds
   recalculateCentroid(room);
 
   room.lastActivity = Date.now();
-  return { room, remainingIds, wasResetToLobby };
+  return { room, remainingIds, wasResetToLobby, wasCreator, wasLobby };
+}
+
+export function disbandRoom(room: Room): void {
+  for (const socketId of Object.keys(room.users)) {
+    socketToRoom.delete(socketId);
+    const sid = socketToSession.get(socketId);
+    if (sid) {
+      sessionToSocket.delete(sid);
+      socketToSession.delete(socketId);
+      const timer = disconnectTimers.get(sid);
+      if (timer) {
+        clearTimeout(timer);
+        disconnectTimers.delete(sid);
+      }
+    }
+  }
+  rooms.delete(room.code);
+  releaseRoomCode(room.code);
 }
 
 function recalculateCentroid(room: Room): void {

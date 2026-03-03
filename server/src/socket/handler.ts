@@ -1,5 +1,5 @@
 import type { Server, Socket } from 'socket.io';
-import { createRoom, joinRoom, getRoomBySocket, removeUserFromRoom, startGame, registerSession, tryReconnect, startGracePeriod } from './roomManager.js';
+import { createRoom, joinRoom, getRoomBySocket, removeUserFromRoom, disbandRoom, startGame, registerSession, tryReconnect, startGracePeriod } from './roomManager.js';
 import { recordSwipe, checkAllSwiped, checkAllDone, getAllMatches, getSwipeProgress } from './matchDetector.js';
 import { initBracket, getCurrentMatchup, recordBracketVote, allVoted, resolveMatchup, advanceToNext, getBracketVoteProgress } from './bracketManager.js';
 import { mergeFilters } from '../utils/filterMerge.js';
@@ -280,10 +280,23 @@ function actuallyRemoveUser(io: Server, socket: Socket): void {
   const result = removeUserFromRoom(socket.id);
   if (!result) return;
 
-  const { room, remainingIds, wasResetToLobby } = result;
+  const { room, remainingIds, wasResetToLobby, wasCreator, wasLobby } = result;
 
   // Leave Socket.IO room so this socket doesn't receive broadcasts meant for remaining players
   socket.leave(room.code);
+
+  // If the creator left while in the lobby, disband the room and kick everyone
+  if (wasCreator && wasLobby && remainingIds.length > 0) {
+    io.to(room.code).emit('room:disbanded', {});
+    // Remove all remaining sockets from the Socket.IO room
+    for (const id of remainingIds) {
+      io.sockets.sockets.get(id)?.leave(room.code);
+    }
+    disbandRoom(room);
+    console.log(`Room ${room.code}: disbanded — host left the lobby`);
+    return;
+  }
+
   const playerCount = remainingIds.length;
 
   // Notify remaining players

@@ -76,6 +76,15 @@ export function useRoom(onRestartedCallback?: () => void) {
       setIsCreator(true);
     };
 
+    const onDisbanded = () => {
+      setRoomCode(null);
+      setPhase('home');
+      setPlayerCount(1);
+      setIsCreator(false);
+      setError('The host left the room.');
+      onRestartedCallback?.();
+    };
+
     const onResetToLobby = () => {
       setPhase('lobby');
       setError(null);
@@ -118,6 +127,7 @@ export function useRoom(onRestartedCallback?: () => void) {
     socket.on('room:error', onError);
     socket.on('room:player_left', onPlayerLeft);
     socket.on('room:promoted', onPromoted);
+    socket.on('room:disbanded', onDisbanded);
     socket.on('room:reset_to_lobby', onResetToLobby);
     socket.on('room:restarted', onRestarted);
     socket.on('connect', onConnect);
@@ -132,6 +142,7 @@ export function useRoom(onRestartedCallback?: () => void) {
       socket.off('room:error', onError);
       socket.off('room:player_left', onPlayerLeft);
       socket.off('room:promoted', onPromoted);
+      socket.off('room:disbanded', onDisbanded);
       socket.off('room:reset_to_lobby', onResetToLobby);
       socket.off('room:restarted', onRestarted);
       socket.off('connect', onConnect);
