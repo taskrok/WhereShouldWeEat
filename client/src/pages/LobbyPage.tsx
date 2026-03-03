@@ -17,10 +17,9 @@ export function LobbyPage({ roomCode, playerCount, isCreator, onStartGame }: Lob
         {isCreator ? (
           <button
             className="btn btn--primary btn--large"
-            disabled={playerCount < 2}
             onClick={onStartGame}
           >
-            Start Game
+            {playerCount < 2 ? 'Go Solo' : 'Start Game'}
           </button>
         ) : (
           <>

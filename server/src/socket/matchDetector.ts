@@ -19,9 +19,8 @@ export function checkAllSwiped(room: Room, socketId: string): boolean {
 }
 
 export function checkAllDone(room: Room): boolean {
-  // Only check current players (not departed)
   const userIds = Object.keys(room.users);
-  if (userIds.length < 2) return false;
+  if (userIds.length === 0) return false;
   return userIds.every(id => {
     const swipes = room.swipes[id] || {};
     const swipedAll = Object.keys(swipes).length >= room.restaurants.length;
@@ -34,7 +33,12 @@ export function getAllMatches(room: Room): Restaurant[] {
   // Count yes-swipes from ALL entries in room.swipes (includes departed players)
   const swiperIds = Object.keys(room.swipes);
   const totalSwipers = swiperIds.length;
-  if (totalSwipers < 2) return [];
+  if (totalSwipers === 0) return [];
+
+  // Solo: every right swipe is a match
+  if (totalSwipers === 1) {
+    return room.restaurants.filter(r => room.swipes[swiperIds[0]]?.[r.placeId] === true);
+  }
 
   // For 2 swipers: require both (unanimous). For 3+: require > 50%
   const threshold = totalSwipers === 2 ? 2 : Math.ceil(totalSwipers * 0.5);

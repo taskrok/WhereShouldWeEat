@@ -161,7 +161,6 @@ export function startGame(socketId: string): Room | null {
   // Only the creator can start
   if (room.users[socketId]?.role !== 'creator') return null;
   if (room.status !== 'lobby') return null;
-  if (Object.keys(room.users).length < 2) return null;
 
   room.status = 'filtering';
   // Initialize filters and swipes for every current user
