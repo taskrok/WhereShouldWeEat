@@ -26,6 +26,21 @@ function emitResults(io: Server, room: any): void {
   }
 }
 
+// Track room creation per IP to prevent abuse
+const roomCreateTimes = new Map<string, number[]>();
+const ROOM_CREATE_WINDOW = 15 * 60 * 1000; // 15 minutes
+const ROOM_CREATE_MAX = 10; // max rooms per IP per window
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const times = roomCreateTimes.get(ip) || [];
+  const recent = times.filter(t => now - t < ROOM_CREATE_WINDOW);
+  roomCreateTimes.set(ip, recent);
+  if (recent.length >= ROOM_CREATE_MAX) return true;
+  recent.push(now);
+  return false;
+}
+
 export function setupSocketHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
     const sessionId = socket.handshake.auth?.sessionId as string | undefined;
@@ -51,6 +66,11 @@ export function setupSocketHandlers(io: Server): void {
     }
 
     socket.on('room:create', ({ lat, lng }: { lat: number; lng: number }) => {
+      const ip = socket.handshake.address;
+      if (isRateLimited(ip)) {
+        socket.emit('room:error', { message: 'Too many rooms created. Please wait a bit.' });
+        return;
+      }
       const room = createRoom(socket.id, lat, lng);
       socket.join(room.code);
       socket.emit('room:created', { code: room.code });

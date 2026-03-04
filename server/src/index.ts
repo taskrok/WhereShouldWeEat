@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { PORT, CLIENT_URL } from './config.js';
 import placesRouter from './routes/places.js';
 import { setupSocketHandlers } from './socket/handler.js';
@@ -40,6 +41,16 @@ const io = new Server(server, { cors: corsOptions });
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Rate limiting for API routes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+app.use('/api/', apiLimiter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', origins: allowedOrigins });
