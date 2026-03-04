@@ -18,7 +18,7 @@ function App() {
   const { location, locationLabel, loading: locationLoading, denied: locationDenied, setLocationFromZip, zipLoading, zipError } = useGeolocation();
   const resetRef = useRef<() => void>(() => {});
   const onRestarted = useCallback(() => resetRef.current(), []);
-  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom, startGame, playerCount, isCreator } = useRoom(onRestarted);
+  const { roomCode, phase, setPhase, error, connected, createRoom, joinRoom, leaveRoom, restartRoom, startGame, playerCount, isCreator, creating } = useRoom(onRestarted);
   const filters = useFilters(setPhase as (phase: string) => void);
   const swipe = useSwipe(filters.restaurants, setPhase as (phase: string) => void);
   const bracket = useBracket(setPhase as (phase: string) => void);
@@ -90,6 +90,7 @@ function App() {
           zipError={zipError}
           hasLocation={!!location}
           locationLabel={locationLabel}
+          creating={creating}
         />
       )}
 

@@ -13,13 +13,14 @@ interface HomePageProps {
   zipError: string | null;
   hasLocation: boolean;
   locationLabel: string | null;
+  creating: boolean;
 }
 
 export function HomePage({
   onCreateRoom, onJoinRoom, error,
   locationLoading,
   locationDenied, onZipSubmit, zipLoading, zipError,
-  hasLocation, locationLabel,
+  hasLocation, locationLabel, creating,
 }: HomePageProps) {
   const [zip, setZip] = useState('');
 
@@ -30,6 +31,21 @@ export function HomePage({
   };
 
   const showZipInput = locationDenied && !hasLocation;
+
+  if (creating) {
+    return (
+      <div className="page page--home">
+        <div className="creating-room">
+          <div className="creating-room__icon">🍽️</div>
+          <div className="creating-room__spinner" />
+          <h2 className="creating-room__title">Setting the table...</h2>
+          <p className="creating-room__message">
+            We're on free servers, so this may take up to 30 seconds on first load. Hang tight!
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page page--home">

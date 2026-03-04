@@ -10,10 +10,12 @@ export function useRoom(onRestartedCallback?: () => void) {
   const [connected, setConnected] = useState(socket.connected);
   const [playerCount, setPlayerCount] = useState(1);
   const [isCreator, setIsCreator] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const createRoom = useCallback((lat: number, lng: number) => {
     setError(null);
     setIsCreator(true);
+    setCreating(true);
     socket.emit('room:create', { lat, lng });
   }, []);
 
@@ -44,6 +46,7 @@ export function useRoom(onRestartedCallback?: () => void) {
     const onCreated = ({ code }: { code: string }) => {
       setRoomCode(code);
       setPlayerCount(1);
+      setCreating(false);
       setPhase('lobby');
     };
 
@@ -62,6 +65,7 @@ export function useRoom(onRestartedCallback?: () => void) {
 
     const onError = ({ message }: { message: string }) => {
       setError(message);
+      setCreating(false);
     };
 
     const onPlayerLeft = ({ playerCount: count }: { playerCount: number }) => {
@@ -150,5 +154,5 @@ export function useRoom(onRestartedCallback?: () => void) {
     };
   }, [onRestartedCallback]);
 
-  return { roomCode, phase, setPhase, error, setError, connected, createRoom, joinRoom, leaveRoom, restartRoom, startGame, playerCount, isCreator };
+  return { roomCode, phase, setPhase, error, setError, connected, createRoom, joinRoom, leaveRoom, restartRoom, startGame, playerCount, isCreator, creating };
 }
