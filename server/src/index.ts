@@ -10,6 +10,7 @@ import { geocodeZip } from './services/geocode.js';
 import { reverseGeocodeLabel } from './services/reverseGeocode.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const server = createServer(app);
 
 const allowedOrigins = [
